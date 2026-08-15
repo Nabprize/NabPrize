@@ -34,6 +34,7 @@ function publicState(match) {
     matchId: match.id,
     state: match.state,
     turnDeadline: match.turnDeadline,
+    serverNow: Date.now(),
     opponent: match.opponent
   };
 }

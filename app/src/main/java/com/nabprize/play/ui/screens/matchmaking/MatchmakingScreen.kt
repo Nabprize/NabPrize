@@ -90,6 +90,7 @@ private data class MatchUiState(
     val opponent: Opponent? = null,
     val board: BoardState = BoardState(),
     val turnDeadline: Long = 0L,
+    val serverClockOffsetMs: Long = 0L,
     val secondsSearching: Int = 0,
     val readySent: Boolean = false,
     val error: String? = null,
@@ -215,6 +216,8 @@ fun MatchmakingScreen(
                 )
                 is MatchEvent.State -> {
                     val serverState = event.payload.optJSONObject("state")
+                    val receivedAt = System.currentTimeMillis()
+                    val serverNow = event.payload.optLong("serverNow", 0L)
                     val opponentId = serverState
                         ?.optJSONArray("players")?.let { players ->
                             (0 until players.length()).map { players.optString(it) }.firstOrNull { it != userId }
@@ -223,6 +226,7 @@ fun MatchmakingScreen(
                         phase = if (serverState?.optString("status") == "ACTIVE") MatchPhase.PLAYING else MatchPhase.MATCH_FOUND,
                         matchId = event.payload.optString("matchId", ui.matchId ?: ""),
                         turnDeadline = event.payload.optLong("turnDeadline", 0L),
+                        serverClockOffsetMs = if (serverNow > 0L) serverNow - receivedAt else ui.serverClockOffsetMs,
                         board = parseBoard(event.payload, userId, opponentId)
                     )
                 }
@@ -288,6 +292,7 @@ fun MatchmakingScreen(
             opponent = ui.opponent ?: Opponent("bot", "Ahsan Khan", true, "Auto-matched opponent"),
             state = ui.board,
             turnDeadline = ui.turnDeadline,
+            serverClockOffsetMs = ui.serverClockOffsetMs,
             onMove = { line -> ui.matchId?.let { client.move(it, line) } },
             onBack = { ui.matchId?.let(client::leave); onBack() }
         )
@@ -384,14 +389,15 @@ private fun OnlineGameContent(
     opponent: Opponent,
     state: BoardState,
     turnDeadline: Long,
+    serverClockOffsetMs: Long,
     onMove: (Line) -> Unit,
     onBack: () -> Unit
 ) {
-    var clockNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var clockNow by remember { mutableLongStateOf(System.currentTimeMillis() + serverClockOffsetMs) }
     val turnLengthMs = 15_000L
-    LaunchedEffect(state.isPlayerTurn, turnDeadline, state.isGameOver) {
+    LaunchedEffect(state.isPlayerTurn, turnDeadline, serverClockOffsetMs, state.isGameOver) {
         while (!state.isGameOver && turnDeadline > 0L) {
-            clockNow = System.currentTimeMillis()
+            clockNow = System.currentTimeMillis() + serverClockOffsetMs
             kotlinx.coroutines.delay(100L)
         }
     }
