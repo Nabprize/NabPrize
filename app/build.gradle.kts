@@ -29,11 +29,11 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "MATCH_SERVER_URL", "\"http://192.168.0.109:3000\"")
+            buildConfigField("String", "MATCH_SERVER_URL", "\"https://nabprize.onrender.com\"")
         }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "MATCH_SERVER_URL", "\"https://match.nabprize.com\"")
+            buildConfigField("String", "MATCH_SERVER_URL", "\"https://nabprize.onrender.com\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
