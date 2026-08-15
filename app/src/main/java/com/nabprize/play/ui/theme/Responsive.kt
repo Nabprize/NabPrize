@@ -18,7 +18,8 @@ data class ResponsiveMetrics(
 fun rememberResponsiveMetrics(): ResponsiveMetrics {
     val width = LocalConfiguration.current.screenWidthDp
     return remember(width) {
-        val compact = width < 340
+        // 360dp phones (including the Tecno test device) need the compact layout.
+        val compact = width < 380
         ResponsiveMetrics(
             isCompact = compact,
             horizontalPadding = if (compact) 14.dp else 20.dp,

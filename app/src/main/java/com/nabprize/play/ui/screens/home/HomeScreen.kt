@@ -17,11 +17,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +50,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -133,7 +136,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(if (metrics.isCompact) 14.dp else 18.dp))
 
         // ── 3. Next Achievement bar ────────────────────────────────
         NextAchievementCard(
@@ -248,7 +251,7 @@ private fun StatCard(
     caption: String
 ) {
     val metrics = rememberResponsiveMetrics()
-    HomeCard(modifier = modifier.height(metrics.statCardHeight)) {
+    HomeCard(modifier = modifier.heightIn(min = metrics.statCardHeight)) {
         // Badge + label inline
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -293,7 +296,7 @@ private fun NpCoinStatCard(
     caption: String
 ) {
     val metrics = rememberResponsiveMetrics()
-    HomeCard(modifier = modifier.height(metrics.statCardHeight)) {
+    HomeCard(modifier = modifier.heightIn(min = metrics.statCardHeight)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -675,7 +678,7 @@ private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 IconBadge(
                     color = AccentGold,
                     icon = Icons.Outlined.EmojiEvents,
@@ -683,13 +686,15 @@ private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
                     badgeSize = 44.dp
                 )
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Rewards",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = subtitle,
@@ -854,6 +859,12 @@ private fun DayPill(
     isCurrent: Boolean,
     isFuture: Boolean
 ) {
+    val metrics = rememberResponsiveMetrics()
+    val pillSize = if (metrics.isCompact) 32.dp else 38.dp
+    val innerPadding = if (metrics.isCompact) 2.dp else 3.dp
+    val dayFontSize = if (metrics.isCompact) 10.sp else 11.sp
+    val coinFontSize = if (metrics.isCompact) 8.sp else 9.sp
+    val labelFontSize = if (metrics.isCompact) 7.sp else 8.sp
     val circleColor = when {
         isClaimed -> PrimaryOrange
         isCurrent -> AccentGold
@@ -874,11 +885,11 @@ private fun DayPill(
         // Glow border for current day
         val outerMod = if (isCurrent)
             Modifier
-                .size(38.dp)
-                .border(2.5.dp, AccentGold, CircleShape)
-                .padding(3.dp)
+                .size(pillSize)
+                .border(if (metrics.isCompact) 2.dp else 2.5.dp, AccentGold, CircleShape)
+                .padding(innerPadding)
         else
-            Modifier.size(38.dp).padding(3.dp)
+            Modifier.size(pillSize).padding(innerPadding)
 
         Box(
             modifier = outerMod
@@ -891,7 +902,7 @@ private fun DayPill(
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = numberColor,
-                    fontSize = 11.sp
+                    fontSize = dayFontSize
                 )
             )
         }
@@ -903,15 +914,17 @@ private fun DayPill(
             style = MaterialTheme.typography.labelSmall.copy(
                 color = coinsColor,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 9.sp
+                fontSize = coinFontSize
             )
         )
         Text(
             text = "coins",
             style = MaterialTheme.typography.labelSmall.copy(
                 color = TextTertiary,
-                fontSize = 8.sp
-            )
+                fontSize = labelFontSize
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -920,6 +933,7 @@ private fun DayPill(
 
 @Composable
 private fun TodayStatsCard(matchesPlayed: Int, coinsEarned: Int) {
+    val metrics = rememberResponsiveMetrics()
     HomeCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -966,7 +980,7 @@ private fun TodayStatsCard(matchesPlayed: Int, coinsEarned: Int) {
             Box(
                 modifier = Modifier
                     .width(1.dp)
-                    .height(56.dp)
+                    .height(if (metrics.isCompact) 50.dp else 56.dp)
                     .background(Color(0xFFEDE6DC))
             )
 
@@ -987,10 +1001,14 @@ private fun TodayStatColumn(
     value: String,
     label: String
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val metrics = rememberResponsiveMetrics()
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.widthIn(max = if (metrics.isCompact) 124.dp else 150.dp)
+    ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(if (metrics.isCompact) 38.dp else 44.dp)
                 .clip(CircleShape)
                 .background(tint.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
@@ -998,22 +1016,31 @@ private fun TodayStatColumn(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(if (metrics.isCompact) 21.dp else 24.dp),
                 tint = tint
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (metrics.isCompact) 6.dp else 8.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Black,
-                color = TextPrimary
-            )
+                color = TextPrimary,
+                fontSize = if (metrics.isCompact) 21.sp else 24.sp
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(Modifier.height(3.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary)
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = TextTertiary,
+                fontSize = if (metrics.isCompact) 11.sp else 12.sp
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

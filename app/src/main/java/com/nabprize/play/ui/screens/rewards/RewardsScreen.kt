@@ -336,6 +336,7 @@ private fun RewardCard(
     currentCoins: Int,
     onClaim: () -> Unit
 ) {
+    val metrics = rememberResponsiveMetrics()
     val progress = (currentCoins.toFloat() / tier.cost.toFloat()).coerceIn(0f, 1f)
     val canClaim = currentCoins >= tier.cost
 
@@ -350,7 +351,7 @@ private fun RewardCard(
             )
             .clip(RoundedCornerShape(24.dp))
             .background(Color.White)
-            .padding(20.dp)
+            .padding(metrics.cardPadding)
     ) {
         Column {
             // ── Header row ───────────────────────────────────────
@@ -391,12 +392,16 @@ private fun RewardCard(
                         tier.name,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold, color = TextPrimary
-                        )
+                        ),
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         tier.subtitle,
-                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
 
