@@ -55,10 +55,10 @@ function emitMatchSnapshot(match, userId) {
   io.to(socketId).emit('game_state', publicState(match));
 }
 
-function findResumableMatch(userId) {
+function findActiveMatch(userId) {
   for (const match of matches.values()) {
     if (match.state.status === 'FINISHED') continue;
-    if (match.state.players.includes(userId) && match.sockets[userId] == null) return match;
+    if (match.state.players.includes(userId)) return match;
   }
   return null;
 }
@@ -179,12 +179,20 @@ io.on('connection', socket => {
   const displayName = safeDisplayName(socket.handshake.auth?.displayName, userId);
   socket.data.userId = userId;
 
-  const resumableMatch = findResumableMatch(userId);
+  const resumableMatch = findActiveMatch(userId);
   if (resumableMatch) {
+    const previousSocketId = resumableMatch.sockets[userId];
     resumableMatch.sockets[userId] = socket.id;
     resumableMatch.disconnectedUser = null;
     clearTimeout(resumableMatch.disconnectTimer);
     socket.data.matchId = resumableMatch.id;
+    if (previousSocketId && previousSocketId !== socket.id) {
+      const previousSocket = io.sockets.sockets.get(previousSocketId);
+      if (previousSocket) {
+        previousSocket.data.replacedByReconnect = true;
+        previousSocket.disconnect(true);
+      }
+    }
     emitMatchSnapshot(resumableMatch, userId);
     const opponentId = resumableMatch.state.players.find(id => id !== userId);
     const opponentSocket = resumableMatch.sockets[opponentId];
@@ -249,12 +257,18 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     removeFromQueue(socket.id);
     for (const match of matches.values()) {
-      if (!match.sockets[userId]) continue;
+      // A superseded socket must not disconnect the newly rebound connection.
+      if (match.sockets[userId] !== socket.id) continue;
       match.sockets[userId] = null;
       match.disconnectedUser = userId;
       const opponentId = match.state.players.find(id => id !== userId);
       const opponentSocket = match.sockets[opponentId];
-      if (opponentSocket) io.to(opponentSocket).emit('opponent_disconnected', { graceMs: DISCONNECT_GRACE_MS });
+      const disconnectDeadline = Date.now() + DISCONNECT_GRACE_MS;
+      if (opponentSocket) io.to(opponentSocket).emit('opponent_disconnected', {
+        graceMs: DISCONNECT_GRACE_MS,
+        disconnectDeadline,
+        serverNow: Date.now()
+      });
       clearTimeout(match.disconnectTimer);
       match.disconnectTimer = setTimeout(() => {
         if (matches.has(match.id) && match.sockets[userId] == null && match.disconnectedUser === userId) {

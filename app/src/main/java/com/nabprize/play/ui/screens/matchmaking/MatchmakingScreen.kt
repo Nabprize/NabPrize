@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -95,6 +96,7 @@ private data class MatchUiState(
     val readySent: Boolean = false,
     val error: String? = null,
     val connectionNotice: String? = null,
+    val connectionDeadline: Long = 0L,
     val result: FinishedMatch? = null
 )
 
@@ -104,7 +106,7 @@ private sealed interface MatchEvent {
     data class Found(val matchId: String, val opponent: Opponent) : MatchEvent
     data class State(val payload: JSONObject) : MatchEvent
     data class Finished(val payload: JSONObject) : MatchEvent
-    data class OpponentDisconnected(val graceMs: Long) : MatchEvent
+    data class OpponentDisconnected(val graceMs: Long, val deadline: Long, val serverNow: Long) : MatchEvent
     data object OpponentReconnected : MatchEvent
     data object Disconnected : MatchEvent
     data class Error(val message: String) : MatchEvent
@@ -153,7 +155,13 @@ private class MatchSocketClient(private val userId: String, private val displayN
                 }
                 .on("opponent_disconnected") { args ->
                     val json = args.firstOrNull() as? JSONObject ?: JSONObject()
-                    deliver(MatchEvent.OpponentDisconnected(json.optLong("graceMs", 35_000L)))
+                    deliver(
+                        MatchEvent.OpponentDisconnected(
+                            graceMs = json.optLong("graceMs", 35_000L),
+                            deadline = json.optLong("disconnectDeadline", System.currentTimeMillis() + 35_000L),
+                            serverNow = json.optLong("serverNow", 0L)
+                        )
+                    )
                 }
                 .on("opponent_reconnected") { deliver(MatchEvent.OpponentReconnected) }
                 .on("match_error") { args ->
@@ -216,17 +224,21 @@ fun MatchmakingScreen(
     LaunchedEffect(client) {
         client.onEvent = { event ->
             ui = when (event) {
-                MatchEvent.Connected -> ui.copy(error = null, connectionNotice = null)
+                MatchEvent.Connected -> ui.copy(error = null, connectionNotice = null, connectionDeadline = 0L)
                 MatchEvent.Disconnected -> if (ui.phase == MatchPhase.PLAYING || ui.phase == MatchPhase.MATCH_FOUND) {
-                    ui.copy(connectionNotice = "Connection lost — reconnecting automatically...")
+                    ui.copy(
+                        connectionNotice = "No Internet — reconnecting automatically...",
+                        connectionDeadline = System.currentTimeMillis() + 35_000L
+                    )
                 } else ui
-                MatchEvent.QueueJoined -> ui.copy(error = null, connectionNotice = null)
+                MatchEvent.QueueJoined -> ui.copy(error = null, connectionNotice = null, connectionDeadline = 0L)
                 is MatchEvent.Found -> ui.copy(
                     phase = MatchPhase.MATCH_FOUND,
                     matchId = event.matchId,
                     opponent = event.opponent,
                     error = null,
-                    connectionNotice = null
+                    connectionNotice = null,
+                    connectionDeadline = 0L
                 )
                 is MatchEvent.State -> {
                     val serverState = event.payload.optJSONObject("state")
@@ -263,9 +275,11 @@ fun MatchmakingScreen(
                     ui.copy(phase = MatchPhase.FINISHED, result = result)
                 }
                 is MatchEvent.OpponentDisconnected -> ui.copy(
-                    connectionNotice = "Opponent disconnected — waiting ${event.graceMs / 1_000L}s for reconnect..."
+                    connectionNotice = "Opponent has a connection issue — waiting for reconnect...",
+                    connectionDeadline = event.deadline,
+                    serverClockOffsetMs = if (event.serverNow > 0L) event.serverNow - System.currentTimeMillis() else ui.serverClockOffsetMs
                 )
-                MatchEvent.OpponentReconnected -> ui.copy(connectionNotice = null)
+                MatchEvent.OpponentReconnected -> ui.copy(connectionNotice = null, connectionDeadline = 0L)
                 is MatchEvent.Error -> if (ui.phase == MatchPhase.PLAYING || ui.phase == MatchPhase.MATCH_FOUND) {
                     ui.copy(connectionNotice = event.message)
                 } else ui.copy(phase = MatchPhase.ERROR, error = event.message)
@@ -315,7 +329,8 @@ fun MatchmakingScreen(
             turnDeadline = ui.turnDeadline,
             serverClockOffsetMs = ui.serverClockOffsetMs,
             connectionNotice = ui.connectionNotice,
-            onMove = { line -> ui.matchId?.let { client.move(it, line) } },
+            connectionDeadline = ui.connectionDeadline,
+            onMove = { line -> if (ui.connectionNotice == null) ui.matchId?.let { client.move(it, line) } },
             onBack = { ui.matchId?.let(client::leave); onBack() }
         )
         MatchPhase.FINISHED -> FinishedContent(
@@ -413,6 +428,7 @@ private fun OnlineGameContent(
     turnDeadline: Long,
     serverClockOffsetMs: Long,
     connectionNotice: String?,
+    connectionDeadline: Long,
     onMove: (Line) -> Unit,
     onBack: () -> Unit
 ) {
@@ -424,9 +440,18 @@ private fun OnlineGameContent(
             kotlinx.coroutines.delay(100L)
         }
     }
+    LaunchedEffect(connectionDeadline, serverClockOffsetMs) {
+        while (connectionDeadline > 0L) {
+            clockNow = System.currentTimeMillis() + serverClockOffsetMs
+            if (clockNow >= connectionDeadline) break
+            kotlinx.coroutines.delay(250L)
+        }
+    }
     val remainingMs = (turnDeadline - clockNow).coerceIn(0L, turnLengthMs)
     val turnProgress = if (turnDeadline > 0L) remainingMs.toFloat() / turnLengthMs else 1f
     val remainingSeconds = ((remainingMs + 999L) / 1_000L).toInt().coerceIn(0, 15)
+    val reconnectRemainingMs = (connectionDeadline - clockNow).coerceAtLeast(0L)
+    val reconnectRemainingSeconds = ((reconnectRemainingMs + 999L) / 1_000L).toInt().coerceIn(0, 35)
 
     MatchPage(modifier) {
         Header("Challenge", onBack)
@@ -449,7 +474,24 @@ private fun OnlineGameContent(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF3CD)).padding(10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(connectionNotice, color = Color(0xFF795548), fontSize = 12.sp, textAlign = TextAlign.Center)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Color(0xFF795548)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(connectionNotice, color = Color(0xFF795548), fontSize = 12.sp, textAlign = TextAlign.Center)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Reconnecting... ${reconnectRemainingSeconds}s",
+                        color = Color(0xFF795548),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -477,7 +519,7 @@ private fun OnlineGameContent(
         Spacer(Modifier.height(10.dp))
         DotsAndBoxesBoard(
             state = state,
-            onLineClick = { if (state.isPlayerTurn && !state.isGameOver) onMove(it) },
+            onLineClick = { if (connectionNotice == null && state.isPlayerTurn && !state.isGameOver) onMove(it) },
             modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp)
         )
         Spacer(Modifier.height(12.dp))
