@@ -1,0 +1,26 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/server/node_modules
+
+# Generated/build output and local machine state
+**/build/
+/.gradle-home
+/.kotlin
+firebase-debug.log
+device-screen.png
+
+# Firebase app config contains project-specific API configuration
+app/google-services.json
