@@ -3,6 +3,9 @@ package com.nabprize.play.ui.navigation
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,7 +24,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -29,6 +35,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.nabprize.play.config.FeatureFlags
 import com.nabprize.play.data.AuthRepository
 import com.nabprize.play.ui.ads.rememberInterstitialAdState
 import com.nabprize.play.ui.auth.AuthViewModel
@@ -110,15 +117,19 @@ fun NabPrizeNavGraph(
                     tonalElevation = 0.dp
                 ) {
                     bottomTabs.forEach { tab ->
+                        val tabEnabled = tab.route != Routes.MATCHMAKING || FeatureFlags.CHALLENGE_ENABLED
                         NavigationBarItem(
                             selected = currentRoute == tab.route,
                             onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                if (tabEnabled) {
+                                    navController.navigate(tab.route) {
+                                        popUpTo(Routes.HOME) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             },
+                            enabled = tabEnabled,
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = { Text(tab.label) },
                             colors = NavigationBarItemDefaults.colors(
@@ -166,7 +177,7 @@ fun NabPrizeNavGraph(
                 onNextAchievementClick = { navController.navigate(Routes.REWARDS) },
                 onPracticeClick        = { navController.navigate(Routes.PRACTICE) },
                 onChallengeClick       = {
-                    if (userState.profile.tickets > 0) {
+                    if (FeatureFlags.CHALLENGE_ENABLED && userState.profile.tickets > 0) {
                         navController.navigate(Routes.MATCHMAKING)
                     }
                 },
@@ -230,7 +241,9 @@ fun NabPrizeNavGraph(
         }
 
         composable(Routes.MATCHMAKING) {
-            if (userState.profile.tickets > 0) {
+            if (!FeatureFlags.CHALLENGE_ENABLED) {
+                ChallengeComingSoonScreen()
+            } else if (userState.profile.tickets > 0) {
                 MatchmakingScreen(
                     onBack = { navController.popBackStack() },
                     playerName = userState.profile.displayName.ifBlank { userState.profile.username }.ifBlank { "Player" },
@@ -252,5 +265,25 @@ fun NabPrizeNavGraph(
             )
         }
     }
+    }
+}
+
+@Composable
+private fun ChallengeComingSoonScreen() {
+    Column(
+        modifier = androidx.compose.ui.Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Challenge Coming Soon",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+        )
+        Text(
+            text = "Live 1v1 is temporarily disabled.",
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

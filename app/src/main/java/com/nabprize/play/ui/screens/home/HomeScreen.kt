@@ -527,13 +527,15 @@ private fun PracticeCard(onClick: () -> Unit) {
 @Composable
 private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
     val metrics = rememberResponsiveMetrics()
+    val isComingSoon = !com.nabprize.play.config.FeatureFlags.CHALLENGE_ENABLED
+    val isAvailable = canChallenge && !isComingSoon
     HomeCard(
         modifier = Modifier
-            .then(if (!canChallenge) Modifier.background(CreamBackground) else Modifier)
+            .then(if (!isAvailable) Modifier.background(CreamBackground) else Modifier)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             // Muted overlay when disabled
-            if (!canChallenge) {
+            if (!isAvailable) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -552,7 +554,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .background(
-                                if (canChallenge) PrimaryOrange.copy(0.14f)
+                                if (isAvailable) PrimaryOrange.copy(0.14f)
                                 else Color.Gray.copy(0.10f)
                             )
                             .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -562,13 +564,13 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                                 imageVector = Icons.Outlined.LocalActivity,
                                 contentDescription = null,
                                 modifier = Modifier.size(13.dp),
-                                tint = if (canChallenge) PrimaryOrange else TextTertiary
+                                tint = if (isAvailable) PrimaryOrange else TextTertiary
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "1 Ticket",
+                                text = if (isComingSoon) "Coming Soon" else "1 Ticket",
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    color = if (canChallenge) PrimaryOrange else TextTertiary,
+                                    color = if (isAvailable) PrimaryOrange else TextTertiary,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             )
@@ -581,7 +583,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                         text = "Challenge\na Player",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (canChallenge) TextPrimary else TextTertiary,
+                            color = if (isAvailable) TextPrimary else TextTertiary,
                             fontSize = if (metrics.isCompact) 20.sp else 24.sp,
                             lineHeight = if (metrics.isCompact) 24.sp else 28.sp
                         )
@@ -589,7 +591,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
 
                     Spacer(Modifier.height(6.dp))
 
-                    if (canChallenge) {
+                    if (isAvailable) {
                         Text(
                             text = "Challenge 1v1 · Dots & Boxes · Best of 5",
                             style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
@@ -615,6 +617,20 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                             )
                         }
                     } else {
+                        if (isComingSoon) {
+                            Text(
+                                text = "Live 1v1 is coming soon",
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary)
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Text(
+                                text = "Stay tuned",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = TextTertiary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        } else {
                         Text(
                             text = "You're out of tickets — Play & Earn to get more",
                             style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary)
@@ -627,6 +643,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
+                        }
                     }
                 }
 
@@ -639,7 +656,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                         .clip(RoundedCornerShape(20.dp))
                         .background(
                             Brush.linearGradient(
-                                if (canChallenge)
+                                if (isAvailable)
                                     listOf(SecondaryPurple.copy(0.08f), PrimaryOrange.copy(0.08f))
                                 else
                                     listOf(Color.Gray.copy(0.06f), Color.Gray.copy(0.06f))
