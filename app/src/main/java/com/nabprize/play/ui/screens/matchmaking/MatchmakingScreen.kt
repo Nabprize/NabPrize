@@ -68,6 +68,7 @@ import com.nabprize.play.ui.theme.StatGreen
 import com.nabprize.play.ui.theme.TextPrimary
 import com.nabprize.play.ui.theme.TextSecondary
 import com.nabprize.play.ui.theme.TextTertiary
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 
 private enum class MatchPhase { SEARCHING, MATCH_FOUND, PLAYING, FINISHED, ERROR }
 
@@ -357,13 +358,14 @@ private fun SearchingContent(
     onBack: () -> Unit,
     onRetry: () -> Unit
 ) {
+    val metrics = rememberResponsiveMetrics()
     MatchPage(modifier) {
         Header("Finding a Challenge", onBack)
         Spacer(Modifier.height(28.dp))
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
                 .background(Brush.linearGradient(listOf(PrimaryOrange, AccentGold)))
-                .padding(30.dp),
+                .padding(if (metrics.isCompact) 22.dp else 30.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -371,7 +373,7 @@ private fun SearchingContent(
                     Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Spacer(Modifier.height(18.dp))
-                Text("Finding opponent...", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Finding opponent...", color = Color.White, fontSize = if (metrics.isCompact) 20.sp else 22.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (seconds < 20) "Searching for a nearby player" else "Almost ready — preparing your challenge",
@@ -561,8 +563,9 @@ private fun ErrorContent(modifier: Modifier, message: String, onRetry: () -> Uni
 
 @Composable
 private fun MatchPage(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val metrics = rememberResponsiveMetrics()
     Column(
-        modifier = modifier.fillMaxSize().background(CreamBackground).verticalScroll(rememberScrollState()).padding(20.dp),
+        modifier = modifier.fillMaxSize().background(CreamBackground).verticalScroll(rememberScrollState()).padding(metrics.horizontalPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         content = content
     )
@@ -592,8 +595,9 @@ private fun OpponentCard(playerName: String, opponent: Opponent, playerBoxes: In
 
 @Composable
 private fun AvatarColumn(name: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, score: Int?, label: String? = null) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp)) {
-        Box(Modifier.size(62.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
+    val metrics = rememberResponsiveMetrics()
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(if (metrics.isCompact) 96.dp else 112.dp)) {
+        Box(Modifier.size(if (metrics.isCompact) 54.dp else 62.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(if (metrics.isCompact) 28.dp else 32.dp)) }
         Spacer(Modifier.height(8.dp))
         Text(name, color = TextPrimary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
         Text(label ?: (score?.let { "$it boxes" } ?: "Player"), color = TextSecondary, fontSize = 11.sp, textAlign = TextAlign.Center)

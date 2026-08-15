@@ -8,12 +8,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +55,7 @@ import com.nabprize.play.ui.theme.SecondaryPurple
 import com.nabprize.play.ui.theme.StatGreen
 import com.nabprize.play.ui.theme.TextPrimary
 import com.nabprize.play.ui.theme.TextSecondary
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 
 @Composable
 fun ProfileScreen(
@@ -64,14 +69,17 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    val metrics = rememberResponsiveMetrics()
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(CreamBackground)
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = metrics.horizontalPadding)
+            .padding(WindowInsets.statusBars.asPaddingValues())
+            .padding(WindowInsets.navigationBars.asPaddingValues())
             .verticalScroll(rememberScrollState())
     ) {
-        Spacer(Modifier.height(48.dp)) // Status bar spacing
+        Spacer(Modifier.height(if (metrics.isCompact) 16.dp else 24.dp))
 
         // ── Header ───────────────────────────────────────────────
         Row(
@@ -104,7 +112,7 @@ fun ProfileScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(if (metrics.isCompact) 84.dp else 100.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE5E7EB)),
                 contentAlignment = Alignment.Center
@@ -113,7 +121,7 @@ fun ProfileScreen(
                 Icon(
                     imageVector = Icons.Outlined.Person,
                     contentDescription = null,
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(if (metrics.isCompact) 42.dp else 50.dp),
                     tint = Color(0xFF9CA3AF)
                 )
             }

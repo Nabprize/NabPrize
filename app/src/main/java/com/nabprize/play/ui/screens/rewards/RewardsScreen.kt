@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,6 +72,7 @@ import com.nabprize.play.ui.theme.TextPrimary
 import com.nabprize.play.ui.theme.TextSecondary
 import com.nabprize.play.ui.theme.TextTertiary
 import com.nabprize.play.ui.theme.CardWhite
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
@@ -142,6 +147,7 @@ fun RewardsScreen(
     onRedeem: (RewardTier, String, String?, (Boolean, String?) -> Unit) -> Unit = { _, _, _, cb -> cb(true, null) },
     onBack: () -> Unit = {}
 ) {
+    val metrics = rememberResponsiveMetrics()
     var selectedReward by remember { mutableStateOf<RewardTier?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -151,9 +157,11 @@ fun RewardsScreen(
         modifier = modifier
             .fillMaxSize()
             .background(CreamBackground)
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = metrics.horizontalPadding)
+            .padding(WindowInsets.statusBars.asPaddingValues())
+            .padding(WindowInsets.navigationBars.asPaddingValues())
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(if (metrics.isCompact) 16.dp else 24.dp))
 
         // ── Top bar ──────────────────────────────────────────────
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -203,7 +211,9 @@ fun RewardsScreen(
                         Text(
                             "$npCoins NP-Coins",
                             style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Black, color = Color.White, fontSize = 26.sp
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                fontSize = if (metrics.isCompact) 22.sp else 26.sp
                             )
                         )
                     }

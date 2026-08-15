@@ -36,6 +36,7 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 
 object AdIds {
     const val BANNER       = "ca-app-pub-3940256099942544/6300978111"
@@ -71,6 +72,7 @@ fun AdMobBanner(modifier: Modifier = Modifier) {
 @Composable
 fun AdMobNativeAd(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val metrics = rememberResponsiveMetrics()
     var nativeAd by remember { mutableStateOf<NativeAd?>(null) }
     var adFailed by remember { mutableStateOf(false) }
 
@@ -98,7 +100,7 @@ fun AdMobNativeAd(modifier: Modifier = Modifier) {
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(230.dp)
+            .height(if (metrics.isCompact) 200.dp else 230.dp)
             .clip(RoundedCornerShape(16.dp))
             .border(1.dp, Color(0xFFE8E0D8), RoundedCornerShape(16.dp))
             .background(Color.White)
@@ -143,7 +145,7 @@ fun AdMobNativeAd(modifier: Modifier = Modifier) {
                 val mediaView = MediaView(ctx).apply {
                     layoutParams = android.widget.FrameLayout.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        400
+                        if (metrics.isCompact) 240 else 300
                     )
                 }
 

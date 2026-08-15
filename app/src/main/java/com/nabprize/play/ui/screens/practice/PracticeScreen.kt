@@ -101,6 +101,7 @@ import com.nabprize.play.ui.theme.StatGreen
 import com.nabprize.play.ui.theme.TextPrimary
 import com.nabprize.play.ui.theme.TextSecondary
 import com.nabprize.play.ui.theme.TextTertiary
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -271,6 +272,7 @@ private fun EntryScreen(
     onBack: () -> Unit,
     onStart: () -> Unit
 ) {
+    val metrics = rememberResponsiveMetrics()
     val pagerState = rememberPagerState(pageCount = { tipSlides.size })
     val coroutineScope = rememberCoroutineScope()
 
@@ -294,7 +296,7 @@ private fun EntryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = if (metrics.isCompact) 10.dp else 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -305,10 +307,10 @@ private fun EntryScreen(
                 Text("Play & Earn vs AI",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold, color = TextPrimary,
-                        fontSize = 22.sp))
+                        fontSize = if (metrics.isCompact) 20.sp else 22.sp))
                 Text("Free play — no ticket needed",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary, fontSize = 13.sp))
+                        color = TextSecondary, fontSize = if (metrics.isCompact) 12.sp else 13.sp))
             }
         }
 
@@ -319,12 +321,12 @@ private fun EntryScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .padding(horizontal = if (metrics.isCompact) 14.dp else 20.dp, vertical = 10.dp)
                 .shadow(4.dp, RoundedCornerShape(20.dp),
                     ambientColor = Color(0x10000000), spotColor = Color(0x10000000))
                 .clip(RoundedCornerShape(20.dp))
                 .background(CardWhite)
-                .padding(28.dp),
+                .padding(if (metrics.isCompact) 18.dp else 28.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -333,24 +335,24 @@ private fun EntryScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
+                        .size(if (metrics.isCompact) 60.dp else 72.dp)
                         .clip(CircleShape)
                         .background(PrimaryOrange),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Filled.SmartToy, null,
-                        modifier = Modifier.size(36.dp), tint = Color.White)
+                        modifier = Modifier.size(if (metrics.isCompact) 30.dp else 36.dp), tint = Color.White)
                 }
 
                 Spacer(Modifier.height(20.dp))
 
                 Text("You vs NabBot",
                     style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 20.sp))
+                        fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = if (metrics.isCompact) 18.sp else 20.sp))
 
                 Spacer(Modifier.height(10.dp))
 
-                Text("5x4 board. Complete a box, take another turn. 10 seconds per move.",
+                Text("5x4 board. Complete a box, take another turn. 15 seconds per move.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 20.sp),
                     textAlign = TextAlign.Center)
@@ -381,12 +383,12 @@ private fun EntryScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(horizontal = if (metrics.isCompact) 14.dp else 20.dp, vertical = 8.dp)
                 .shadow(3.dp, RoundedCornerShape(18.dp),
                     ambientColor = Color(0x0D000000), spotColor = Color(0x0D000000))
                 .clip(RoundedCornerShape(18.dp))
                 .background(CardWhite)
-                .padding(20.dp)
+                .padding(if (metrics.isCompact) 16.dp else 20.dp)
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -437,12 +439,12 @@ private fun EntryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = if (metrics.isCompact) 14.dp else 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("💡 Tips & Tricks",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp))
+                        fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = if (metrics.isCompact) 15.sp else 16.sp))
                 Spacer(Modifier.weight(1f))
                 // Dot indicators
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -464,8 +466,8 @@ private fun EntryScreen(
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(128.dp)
-                    .padding(horizontal = 20.dp)
+                    .height(if (metrics.isCompact) 154.dp else 128.dp)
+                    .padding(horizontal = if (metrics.isCompact) 12.dp else 20.dp)
             ) { page ->
                 val tip = tipSlides[page]
                 Box(
@@ -476,23 +478,23 @@ private fun EntryScreen(
                             ambientColor = Color(0x0C000000), spotColor = Color(0x0C000000))
                         .clip(RoundedCornerShape(20.dp))
                         .background(CardWhite)
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .padding(horizontal = if (metrics.isCompact) 12.dp else 16.dp, vertical = if (metrics.isCompact) 12.dp else 14.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(tip.emoji, fontSize = 28.sp)
-                        Spacer(Modifier.width(12.dp))
+                        Text(tip.emoji, fontSize = if (metrics.isCompact) 24.sp else 28.sp)
+                        Spacer(Modifier.width(if (metrics.isCompact) 8.dp else 12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(tip.title,
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp))
+                                    fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = if (metrics.isCompact) 15.sp else 16.sp))
                             Spacer(Modifier.height(4.dp))
                             Text(tip.body,
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = TextSecondary, lineHeight = 19.sp, fontSize = 14.sp),
-                                maxLines = 3,
+                                    color = TextSecondary, lineHeight = if (metrics.isCompact) 17.sp else 19.sp, fontSize = if (metrics.isCompact) 13.sp else 14.sp),
+                                maxLines = if (metrics.isCompact) 4 else 3,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
                     }

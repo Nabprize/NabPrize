@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -67,6 +68,7 @@ import com.nabprize.play.ui.theme.StatGreen
 import com.nabprize.play.ui.theme.TextPrimary
 import com.nabprize.play.ui.theme.TextSecondary
 import com.nabprize.play.ui.theme.TextTertiary
+import com.nabprize.play.ui.theme.rememberResponsiveMetrics
 
 private val REWARD_PER_DAY = listOf(5, 10, 15, 20, 25, 30, 50)
 
@@ -89,6 +91,7 @@ fun HomeScreen(
     onRewardsClick: () -> Unit = {},
     onDailyCheckinClick: () -> Unit = {}
 ) {
+    val metrics = rememberResponsiveMetrics()
     val nextThreshold = 1500L
     val achievementProgress = (npCoins.toFloat() / nextThreshold.toFloat()).coerceIn(0f, 1f)
     val canChallenge = tickets > 0
@@ -98,10 +101,11 @@ fun HomeScreen(
             .fillMaxSize()
             .background(CreamBackground)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = metrics.horizontalPadding)
+            .padding(WindowInsets.statusBars.asPaddingValues())
             .padding(WindowInsets.navigationBars.asPaddingValues())
     ) {
-        Spacer(Modifier.height(56.dp)) // status-bar breathing room
+        Spacer(Modifier.height(if (metrics.isCompact) 12.dp else 16.dp))
 
         // ── 1. Header ─────────────────────────────────────────────
         HomeHeader(username = username, onAvatarClick = onAvatarClick)
@@ -243,7 +247,8 @@ private fun StatCard(
     valueColor: Color = TextPrimary,
     caption: String
 ) {
-    HomeCard(modifier = modifier.height(140.dp)) {
+    val metrics = rememberResponsiveMetrics()
+    HomeCard(modifier = modifier.height(metrics.statCardHeight)) {
         // Badge + label inline
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -267,7 +272,7 @@ private fun StatCard(
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = valueColor,
-                fontSize = 30.sp
+                fontSize = if (metrics.isCompact) 26.sp else 30.sp
             )
         )
         Spacer(Modifier.height(4.dp))
@@ -287,7 +292,8 @@ private fun NpCoinStatCard(
     value: String,
     caption: String
 ) {
-    HomeCard(modifier = modifier.height(140.dp)) {
+    val metrics = rememberResponsiveMetrics()
+    HomeCard(modifier = modifier.height(metrics.statCardHeight)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -308,7 +314,7 @@ private fun NpCoinStatCard(
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = StatGreen,
-                fontSize = 30.sp
+                fontSize = if (metrics.isCompact) 26.sp else 30.sp
             )
         )
         Spacer(Modifier.height(4.dp))
@@ -421,6 +427,7 @@ style = MaterialTheme.typography.titleLarge.copy(
 
 @Composable
 private fun PracticeCard(onClick: () -> Unit) {
+    val metrics = rememberResponsiveMetrics()
     HomeCard(modifier = Modifier.clickable { onClick() }) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -455,7 +462,8 @@ private fun PracticeCard(onClick: () -> Unit) {
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = TextPrimary,
-                        lineHeight = 28.sp
+                        fontSize = if (metrics.isCompact) 20.sp else 24.sp,
+                        lineHeight = if (metrics.isCompact) 24.sp else 28.sp
                     )
                 )
 
@@ -492,7 +500,7 @@ private fun PracticeCard(onClick: () -> Unit) {
             // DotsAndBoxes illustration in a styled container
             Box(
                 modifier = Modifier
-                    .size(116.dp)
+                    .size(metrics.illustrationSize)
                     .clip(RoundedCornerShape(20.dp))
                     .background(
                         Brush.linearGradient(
@@ -505,7 +513,7 @@ private fun PracticeCard(onClick: () -> Unit) {
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                DotsAndBoxesPreview(size = 96.dp)
+                DotsAndBoxesPreview(size = if (metrics.isCompact) 76.dp else 96.dp)
             }
         }
     }
@@ -515,6 +523,7 @@ private fun PracticeCard(onClick: () -> Unit) {
 
 @Composable
 private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
+    val metrics = rememberResponsiveMetrics()
     HomeCard(
         modifier = Modifier
             .then(if (!canChallenge) Modifier.background(CreamBackground) else Modifier)
@@ -570,7 +579,8 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = if (canChallenge) TextPrimary else TextTertiary,
-                            lineHeight = 28.sp
+                            fontSize = if (metrics.isCompact) 20.sp else 24.sp,
+                            lineHeight = if (metrics.isCompact) 24.sp else 28.sp
                         )
                     )
 
@@ -622,7 +632,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                 // 1v1 illustration
                 Box(
                     modifier = Modifier
-                        .size(116.dp)
+                        .size(metrics.illustrationSize)
                         .clip(RoundedCornerShape(20.dp))
                         .background(
                             Brush.linearGradient(
@@ -635,7 +645,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    OneVsOneIllustration(size = 100.dp)
+                    OneVsOneIllustration(size = if (metrics.isCompact) 78.dp else 100.dp)
                 }
             }
         }
@@ -716,7 +726,7 @@ private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp)
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(11.dp))
                             .background(Color(0xFFF7F5F1))
                     ) {
@@ -1015,6 +1025,7 @@ private fun HomeCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val metrics = rememberResponsiveMetrics()
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -1027,7 +1038,7 @@ private fun HomeCard(
             )
             .clip(RoundedCornerShape(28.dp))
             .background(CardWhite)
-            .padding(20.dp)
+            .padding(metrics.cardPadding)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             content()
