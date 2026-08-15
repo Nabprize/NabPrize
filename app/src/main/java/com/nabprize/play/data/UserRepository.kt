@@ -163,30 +163,42 @@ class UserRepository {
 
     // ─── Update Match Result ─────────────────────────────────
 
-    suspend fun updateMatchResult(isWin: Boolean): Result<Unit> {
+    suspend fun updateMatchResult(matchId: String, isWin: Boolean): Result<Unit> {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
             val today = getTodayDate()
             val coinReward = if (isWin) 40L else 2L
-            val updates = if (isWin) {
-                hashMapOf(
-                    "totalWins" to FieldValue.increment(1),
+            if (matchId.isBlank()) return Result.failure(Exception("Match ID missing hai"))
+            val userRef = usersCol.document(id)
+
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(userRef)
+                val processed = (snapshot.get("processedMatchIds") as? List<*>)
+                    ?.filterIsInstance<String>()
+                    .orEmpty()
+                if (processed.contains(matchId)) return@runTransaction
+
+                val tickets = (snapshot.getLong("tickets") ?: 0L).toInt()
+                val usage = (snapshot.getLong("currentTicketUsage") ?: 0L).toInt()
+                val ticketUpdates = if (isWin && usage + 1 < 15) {
+                    mapOf("currentTicketUsage" to usage + 1)
+                } else {
+                    mapOf(
+                        "tickets" to maxOf(0, tickets - 1),
+                        "currentTicketUsage" to 0
+                    )
+                }
+                val updates = hashMapOf<String, Any>(
+                    (if (isWin) "totalWins" else "totalLosses") to FieldValue.increment(1L),
                     "npCoins" to FieldValue.increment(coinReward),
                     "todayMatchesPlayed" to FieldValue.increment(1L),
                     "todayCoinsEarned" to FieldValue.increment(coinReward),
-                    "lastPlayDate" to today
+                    "lastPlayDate" to today,
+                    "processedMatchIds" to FieldValue.arrayUnion(matchId)
                 )
-            } else {
-                hashMapOf(
-                    "totalLosses" to FieldValue.increment(1),
-                    "npCoins" to FieldValue.increment(coinReward),
-                    "todayMatchesPlayed" to FieldValue.increment(1L),
-                    "todayCoinsEarned" to FieldValue.increment(coinReward),
-                    "lastPlayDate" to today
-                )
-            }
-            usersCol.document(id).set(updates, SetOptions.merge()).await()
-            consumeOrReuseTicket(isWin)
+                updates.putAll(ticketUpdates)
+                transaction.set(userRef, updates, SetOptions.merge())
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("UserRepository", "updateMatchResult error: ${e.message}", e)

@@ -45,7 +45,32 @@ function emitState(match) {
   }
 }
 
-function finish(match, reason = 'completed') {
+function emitMatchSnapshot(match, userId) {
+  const socketId = match.sockets[userId];
+  if (!socketId) return;
+  io.to(socketId).emit('match_found', {
+    matchId: match.id,
+    opponent: match.opponent[userId]
+  });
+  io.to(socketId).emit('game_state', publicState(match));
+}
+
+function findResumableMatch(userId) {
+  for (const match of matches.values()) {
+    if (match.state.status === 'FINISHED') continue;
+    if (match.state.players.includes(userId) && match.sockets[userId] == null) return match;
+  }
+  return null;
+}
+
+function winnerForFinish(match, reason, forfeitingPlayer) {
+  if (['rage_quit', 'disconnect_forfeit', 'timeout_forfeit'].includes(reason) && forfeitingPlayer) {
+    return match.state.players.find(player => player !== forfeitingPlayer) || null;
+  }
+  return winnerFor(match.state);
+}
+
+function finish(match, reason = 'completed', forfeitingPlayer = null) {
   if (!matches.has(match.id)) return;
   clearTimeout(match.turnTimer);
   clearTimeout(match.disconnectTimer);
@@ -53,7 +78,7 @@ function finish(match, reason = 'completed') {
   const result = {
     matchId: match.id,
     reason,
-    winner: winnerFor(match.state),
+    winner: winnerForFinish(match, reason, forfeitingPlayer),
     scores: match.state.scores,
     startedAt: match.state.startedAt,
     endedAt: Date.now()
@@ -83,7 +108,7 @@ function handleTimeout(match) {
   const player = match.state.turn;
   match.state.consecutiveTimeouts[player] = (match.state.consecutiveTimeouts[player] || 0) + 1;
   if (match.state.consecutiveTimeouts[player] >= MAX_CONSECUTIVE_TIMEOUTS) {
-    finish(match, 'timeout_forfeit');
+    finish(match, 'timeout_forfeit', player);
     return;
   }
   const move = randomBotMove(match.state);
@@ -124,7 +149,8 @@ function createMatch(first, second = null) {
     ready: new Set(),
     turnTimer: null,
     disconnectTimer: null,
-    turnDeadline: null
+    turnDeadline: null,
+    disconnectedUser: null
   };
   match.state.status = 'READY';
   matches.set(id, match);
@@ -153,7 +179,26 @@ io.on('connection', socket => {
   const displayName = safeDisplayName(socket.handshake.auth?.displayName, userId);
   socket.data.userId = userId;
 
+  const resumableMatch = findResumableMatch(userId);
+  if (resumableMatch) {
+    resumableMatch.sockets[userId] = socket.id;
+    resumableMatch.disconnectedUser = null;
+    clearTimeout(resumableMatch.disconnectTimer);
+    socket.data.matchId = resumableMatch.id;
+    emitMatchSnapshot(resumableMatch, userId);
+    const opponentId = resumableMatch.state.players.find(id => id !== userId);
+    const opponentSocket = resumableMatch.sockets[opponentId];
+    if (opponentSocket) io.to(opponentSocket).emit('opponent_reconnected');
+  }
+
   socket.on('join_queue', () => {
+    const activeMatch = [...matches.values()].find(match =>
+      match.state.status !== 'FINISHED' && match.state.players.includes(userId) && match.sockets[userId]
+    );
+    if (activeMatch) {
+      socket.emit('match_error', { code: 'MATCH_IN_PROGRESS' });
+      return;
+    }
     removeFromQueue(socket.id);
     const entry = { userId, displayName, socketId: socket.id, queuedAt: Date.now(), botTimer: null };
     queue.push(entry);
@@ -176,6 +221,7 @@ io.on('connection', socket => {
   socket.on('match_ready', ({ matchId }) => {
     const match = matches.get(matchId);
     if (!match || !match.state.players.includes(userId)) return;
+    socket.data.matchId = matchId;
     match.ready.add(userId);
     const requiredPlayers = match.state.players.filter(player => player !== BOT);
     if (requiredPlayers.every(player => match.ready.has(player))) startMatch(match);
@@ -197,7 +243,7 @@ io.on('connection', socket => {
 
   socket.on('leave_match', ({ matchId }) => {
     const match = matches.get(matchId);
-    if (match) finish(match, 'rage_quit');
+    if (match) finish(match, 'rage_quit', userId);
   });
 
   socket.on('disconnect', () => {
@@ -205,11 +251,16 @@ io.on('connection', socket => {
     for (const match of matches.values()) {
       if (!match.sockets[userId]) continue;
       match.sockets[userId] = null;
+      match.disconnectedUser = userId;
       const opponentId = match.state.players.find(id => id !== userId);
       const opponentSocket = match.sockets[opponentId];
       if (opponentSocket) io.to(opponentSocket).emit('opponent_disconnected', { graceMs: DISCONNECT_GRACE_MS });
       clearTimeout(match.disconnectTimer);
-      match.disconnectTimer = setTimeout(() => finish(match, 'disconnect_forfeit'), DISCONNECT_GRACE_MS);
+      match.disconnectTimer = setTimeout(() => {
+        if (matches.has(match.id) && match.sockets[userId] == null && match.disconnectedUser === userId) {
+          finish(match, 'disconnect_forfeit', userId);
+        }
+      }, DISCONNECT_GRACE_MS);
     }
   });
 });

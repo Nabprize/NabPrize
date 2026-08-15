@@ -11,7 +11,7 @@ npm start
 The health endpoint is available at `http://localhost:3000/health`.
 
 The server is authoritative for the 5x4 board, validates turns and lines,
-keeps the 10-second turn timer, applies timeout forfeits after three
+keeps the 15-second turn timer, applies timeout forfeits after three
 consecutive timeouts, matches two queued players, and falls back to a bot
 after 20 seconds. A disconnected player has a 35-second reconnect grace
 period.

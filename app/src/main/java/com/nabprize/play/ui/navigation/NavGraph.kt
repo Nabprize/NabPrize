@@ -33,6 +33,8 @@ import com.nabprize.play.data.AuthRepository
 import com.nabprize.play.ui.ads.rememberInterstitialAdState
 import com.nabprize.play.ui.auth.AuthViewModel
 import com.nabprize.play.ui.auth.UserViewModel
+import com.nabprize.play.ui.components.OfflineBanner
+import com.nabprize.play.ui.components.rememberNetworkAvailable
 import com.nabprize.play.ui.screens.LoginSignupScreen
 import com.nabprize.play.ui.screens.home.HomeScreen
 import com.nabprize.play.ui.screens.matchmaking.MatchmakingScreen
@@ -76,6 +78,7 @@ fun NabPrizeNavGraph(
     val userState by userViewModel.state.collectAsState()
     val interstitialAdState = rememberInterstitialAdState()
     val context = LocalContext.current
+    val isOnline = rememberNetworkAvailable()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
@@ -98,6 +101,7 @@ fun NabPrizeNavGraph(
     }
 
     Scaffold(
+        topBar = { if (!isOnline) OfflineBanner() },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (showBottomBar) {
@@ -230,7 +234,7 @@ fun NabPrizeNavGraph(
                 MatchmakingScreen(
                     onBack = { navController.popBackStack() },
                     playerName = userState.profile.displayName.ifBlank { userState.profile.username }.ifBlank { "Player" },
-                    onMatchResult = { isWin -> userViewModel.updateMatchResult(isWin) }
+                    onMatchResult = { matchId, isWin -> userViewModel.updateMatchResult(matchId, isWin) }
                 )
             } else {
                 LaunchedEffect(Unit) { navController.popBackStack() }
@@ -242,9 +246,9 @@ fun NabPrizeNavGraph(
                 onHome = { navController.popBackStack() },
                 onPlayAgain = { navController.navigate(Routes.MATCHMAKING) },
                 onPracticeAndEarn = { navController.navigate(Routes.PRACTICE) },
-                onResultRecorded = { isWin ->
-                    userViewModel.updateMatchResult(isWin)
-                }
+                // Online results are settled by MatchmakingScreen with the server match ID.
+                // This legacy route has no match ID, so it must not write a duplicate reward.
+                onResultRecorded = { }
             )
         }
     }

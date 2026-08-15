@@ -94,6 +94,7 @@ private data class MatchUiState(
     val secondsSearching: Int = 0,
     val readySent: Boolean = false,
     val error: String? = null,
+    val connectionNotice: String? = null,
     val result: FinishedMatch? = null
 )
 
@@ -103,6 +104,9 @@ private sealed interface MatchEvent {
     data class Found(val matchId: String, val opponent: Opponent) : MatchEvent
     data class State(val payload: JSONObject) : MatchEvent
     data class Finished(val payload: JSONObject) : MatchEvent
+    data class OpponentDisconnected(val graceMs: Long) : MatchEvent
+    data object OpponentReconnected : MatchEvent
+    data object Disconnected : MatchEvent
     data class Error(val message: String) : MatchEvent
 }
 
@@ -124,6 +128,7 @@ private class MatchSocketClient(private val userId: String, private val displayN
             val connectedSocket = socket ?: return
             connectedSocket
                 .on(Socket.EVENT_CONNECT) { deliver(MatchEvent.Connected) }
+                .on(Socket.EVENT_DISCONNECT) { deliver(MatchEvent.Disconnected) }
                 .on("queue_joined") { deliver(MatchEvent.QueueJoined) }
                 .on("match_found") { args ->
                     val json = args.firstOrNull() as? JSONObject ?: return@on
@@ -146,6 +151,11 @@ private class MatchSocketClient(private val userId: String, private val displayN
                 .on("match_finished") { args ->
                     (args.firstOrNull() as? JSONObject)?.let { deliver(MatchEvent.Finished(it)) }
                 }
+                .on("opponent_disconnected") { args ->
+                    val json = args.firstOrNull() as? JSONObject ?: JSONObject()
+                    deliver(MatchEvent.OpponentDisconnected(json.optLong("graceMs", 35_000L)))
+                }
+                .on("opponent_reconnected") { deliver(MatchEvent.OpponentReconnected) }
                 .on("match_error") { args ->
                     val json = args.firstOrNull() as? JSONObject
                     deliver(MatchEvent.Error(json?.optString("code", "Move rejected") ?: "Move rejected"))
@@ -189,7 +199,7 @@ fun MatchmakingScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     playerName: String = "Player",
-    onMatchResult: (Boolean) -> Unit = {}
+    onMatchResult: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     val userId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "guest_${System.currentTimeMillis()}" }
     val authName = FirebaseAuth.getInstance().currentUser?.displayName?.trim().orEmpty()
@@ -206,13 +216,17 @@ fun MatchmakingScreen(
     LaunchedEffect(client) {
         client.onEvent = { event ->
             ui = when (event) {
-                MatchEvent.Connected -> ui
-                MatchEvent.QueueJoined -> ui.copy(error = null)
+                MatchEvent.Connected -> ui.copy(error = null, connectionNotice = null)
+                MatchEvent.Disconnected -> if (ui.phase == MatchPhase.PLAYING || ui.phase == MatchPhase.MATCH_FOUND) {
+                    ui.copy(connectionNotice = "Connection lost — reconnecting automatically...")
+                } else ui
+                MatchEvent.QueueJoined -> ui.copy(error = null, connectionNotice = null)
                 is MatchEvent.Found -> ui.copy(
                     phase = MatchPhase.MATCH_FOUND,
                     matchId = event.matchId,
                     opponent = event.opponent,
-                    error = null
+                    error = null,
+                    connectionNotice = null
                 )
                 is MatchEvent.State -> {
                     val serverState = event.payload.optJSONObject("state")
@@ -227,7 +241,8 @@ fun MatchmakingScreen(
                         matchId = event.payload.optString("matchId", ui.matchId ?: ""),
                         turnDeadline = event.payload.optLong("turnDeadline", 0L),
                         serverClockOffsetMs = if (serverNow > 0L) serverNow - receivedAt else ui.serverClockOffsetMs,
-                        board = parseBoard(event.payload, userId, opponentId)
+                        board = parseBoard(event.payload, userId, opponentId),
+                        error = null
                     )
                 }
                 is MatchEvent.Finished -> {
@@ -243,11 +258,17 @@ fun MatchmakingScreen(
                     )
                     if (!resultRecorded) {
                         resultRecorded = true
-                        onMatchResult(result.won)
+                        onMatchResult(event.payload.optString("matchId", ui.matchId.orEmpty()), result.won)
                     }
                     ui.copy(phase = MatchPhase.FINISHED, result = result)
                 }
-                is MatchEvent.Error -> ui.copy(phase = MatchPhase.ERROR, error = event.message)
+                is MatchEvent.OpponentDisconnected -> ui.copy(
+                    connectionNotice = "Opponent disconnected — waiting ${event.graceMs / 1_000L}s for reconnect..."
+                )
+                MatchEvent.OpponentReconnected -> ui.copy(connectionNotice = null)
+                is MatchEvent.Error -> if (ui.phase == MatchPhase.PLAYING || ui.phase == MatchPhase.MATCH_FOUND) {
+                    ui.copy(connectionNotice = event.message)
+                } else ui.copy(phase = MatchPhase.ERROR, error = event.message)
             }
         }
         client.connect()
@@ -293,6 +314,7 @@ fun MatchmakingScreen(
             state = ui.board,
             turnDeadline = ui.turnDeadline,
             serverClockOffsetMs = ui.serverClockOffsetMs,
+            connectionNotice = ui.connectionNotice,
             onMove = { line -> ui.matchId?.let { client.move(it, line) } },
             onBack = { ui.matchId?.let(client::leave); onBack() }
         )
@@ -390,6 +412,7 @@ private fun OnlineGameContent(
     state: BoardState,
     turnDeadline: Long,
     serverClockOffsetMs: Long,
+    connectionNotice: String?,
     onMove: (Line) -> Unit,
     onBack: () -> Unit
 ) {
@@ -420,6 +443,15 @@ private fun OnlineGameContent(
             color = if (state.isPlayerTurn) PrimaryOrange else TextSecondary,
             fontWeight = FontWeight.SemiBold
         )
+        if (connectionNotice != null) {
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF3CD)).padding(10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(connectionNotice, color = Color(0xFF795548), fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+        }
         Spacer(Modifier.height(8.dp))
         Box(
             Modifier.fillMaxWidth()

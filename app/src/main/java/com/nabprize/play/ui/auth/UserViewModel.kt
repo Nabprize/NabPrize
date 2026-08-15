@@ -181,10 +181,11 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateMatchResult(isWin: Boolean) {
+    fun updateMatchResult(matchId: String, isWin: Boolean) {
         viewModelScope.launch {
-            repo.updateMatchResult(isWin)
-            fetchProfile()
+            val result = repo.updateMatchResult(matchId, isWin)
+            if (result.isSuccess) fetchProfile()
+            else Log.e("UserViewModel", "updateMatchResult failed: ${result.exceptionOrNull()?.message}")
         }
     }
 

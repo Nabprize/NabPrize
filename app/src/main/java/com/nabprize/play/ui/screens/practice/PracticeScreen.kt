@@ -261,7 +261,7 @@ private val tipSlides = listOf(
     TipSlide("🎟", "Earn Tickets",
         "Watch short ads to earn tickets. Use tickets to enter competitive matches for bigger prizes."),
     TipSlide("⚡", "Speed Matters",
-        "You have 10 seconds per move. Stay sharp — fast thinking beats the bot every time!")
+        "You have 15 seconds per move. Stay sharp — fast thinking beats the bot every time!")
 )
 
 @Composable
