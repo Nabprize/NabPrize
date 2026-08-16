@@ -100,14 +100,14 @@ private const val CURRENT_NP_COINS = 640
 
 private val rewardTiers = listOf(
     RewardTier(
-        id = "mobile_load",
-        name = "Rs 100 Mobile Load",
-        subtitle = "Any network · Instant top-up",
+        id = "ff_diamonds_13",
+        name = "13 FreeFire Diamonds",
+        subtitle = "Free Fire · In-game currency",
         cost = 1500,
-        mainImageRes = R.drawable.img_mobile_networks_square,
+        mainImageRes = R.drawable.img_freefire,
         brandImageRes = null,
-        accentColor = Color(0xFF10B981),
-        type = RewardType.MOBILE_LOAD
+        accentColor = Color(0xFFFF3A00),
+        type = RewardType.GAME_CURRENCY
     ),
     RewardTier(
         id = "pubg_uc",

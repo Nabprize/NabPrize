@@ -122,7 +122,7 @@ fun HomeScreen(
 
         // ── 3. Next Achievement bar ────────────────────────────────
         NextAchievementCard(
-            name = "Rs 100 Mobile Load",
+            name = "13 FreeFire Diamonds",
             current = npCoins,
             total = nextThreshold,
             progress = achievementProgress,
@@ -655,7 +655,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
 @Composable
 private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
     val rewardItems = listOf(
-        Triple(R.drawable.img_mobile_networks_square, "Mobile Load", 1500L),
+        Triple(R.drawable.img_freefire, "13 FF Diamonds", 1500L),
         Triple(R.drawable.img_pubg_mobile, "PUBG UC", 3000L),
         Triple(R.drawable.img_freefire, "FF Diamonds", 3000L),
         Triple(R.drawable.img_earbuds, "Earbuds", 20000L)
