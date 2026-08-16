@@ -324,7 +324,7 @@ private fun NextAchievementCard(
             modifier = Modifier.fillMaxWidth()
         ) {
             Image(
-                painter = painterResource(R.drawable.img_mobile_networks_square),
+                painter = painterResource(R.drawable.img_freefire),
                 contentDescription = name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -656,7 +656,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
 private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
     val rewardItems = listOf(
         Triple(R.drawable.img_freefire, "13 FF Diamonds", 350L),
-        Triple(R.drawable.img_pubg_mobile, "PUBG UC", 3000L),
+        Triple(R.drawable.img_mobile_networks_square, "Easyload", 1500L),
         Triple(R.drawable.img_freefire, "FF Diamonds", 3000L),
         Triple(R.drawable.img_earbuds, "Earbuds", 20000L)
     )

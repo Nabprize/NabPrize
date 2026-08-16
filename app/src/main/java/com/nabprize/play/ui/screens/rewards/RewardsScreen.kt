@@ -110,13 +110,13 @@ private val rewardTiers = listOf(
         type = RewardType.GAME_CURRENCY
     ),
     RewardTier(
-        id = "pubg_uc",
-        name = "60 PUBG UC",
-        subtitle = "PUBG Mobile · In-game currency",
-        cost = 3000,
-        mainImageRes = R.drawable.img_pubg_mobile,
-        accentColor = Color(0xFFFFB800),
-        type = RewardType.GAME_CURRENCY
+        id = "mobile_load",
+        name = "Rs 100 Easyload",
+        subtitle = "Any network · Instant top-up",
+        cost = 1500,
+        mainImageRes = R.drawable.img_mobile_networks_square,
+        accentColor = Color(0xFF10B981),
+        type = RewardType.MOBILE_LOAD
     ),
     RewardTier(
         id = "ff_diamonds",
