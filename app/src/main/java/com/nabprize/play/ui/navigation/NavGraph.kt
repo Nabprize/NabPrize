@@ -195,6 +195,8 @@ fun NabPrizeNavGraph(
                 lifetimeCoinsEarned = userState.profile.lifetimeCoinsEarned,
                 onBack = { navController.popBackStack() },
                 onLogout = {
+                    userViewModel.clearSession()
+                    authViewModel.signOut()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -214,11 +216,11 @@ fun NabPrizeNavGraph(
 
         composable(Routes.PRACTICE) {
             PracticeScreen(
-                onClaimPracticeReward = { isWin, boxesCaptured ->
-                    userViewModel.recordPracticeResult(isWin, boxesCaptured)
+                onClaimPracticeReward = { isWin, boxesCaptured, onComplete ->
+                    userViewModel.recordPracticeResult(isWin, boxesCaptured, onComplete)
                 },
-                onClaimBonusCoins = {
-                    userViewModel.addCoins(10)
+                onClaimBonusCoins = { onComplete ->
+                    userViewModel.addCoins(10, onComplete)
                 },
                 onBack = { navController.popBackStack() }
             )

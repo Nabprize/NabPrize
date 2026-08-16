@@ -119,8 +119,8 @@ private const val ADS_PER_TICKET = 10
 @Composable
 fun PracticeScreen(
     modifier: Modifier = Modifier,
-    onClaimPracticeReward: (isWin: Boolean, boxesCaptured: Int) -> Unit = { _, _ -> },
-    onClaimBonusCoins: () -> Unit = {},
+    onClaimPracticeReward: (isWin: Boolean, boxesCaptured: Int, onComplete: (Boolean) -> Unit) -> Unit = { _, _, callback -> callback(false) },
+    onClaimBonusCoins: (onComplete: (Boolean) -> Unit) -> Unit = { callback -> callback(false) },
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -201,15 +201,17 @@ fun PracticeScreen(
                         rewardedAdState.show(
                             activity = activity,
                             onRewarded = {
-                                onClaimPracticeReward(playerWon, finalPlayerBoxes)
-                                isWatchingMatchAd = false
-                                hasClaimedMatchReward = true
+                                onClaimPracticeReward(playerWon, finalPlayerBoxes) { success ->
+                                    isWatchingMatchAd = false
+                                    hasClaimedMatchReward = success
+                                }
                             },
                             onUnavailable = {
                                 interstitialAdState.show(activity) {
-                                    onClaimPracticeReward(playerWon, finalPlayerBoxes)
-                                    isWatchingMatchAd = false
-                                    hasClaimedMatchReward = true
+                                    onClaimPracticeReward(playerWon, finalPlayerBoxes) { success ->
+                                        isWatchingMatchAd = false
+                                        hasClaimedMatchReward = success
+                                    }
                                 }
                             },
                             onDismissedWithoutReward = {
@@ -217,9 +219,10 @@ fun PracticeScreen(
                             }
                         )
                     } else {
-                        onClaimPracticeReward(playerWon, finalPlayerBoxes)
-                        isWatchingMatchAd = false
-                        hasClaimedMatchReward = true
+                        onClaimPracticeReward(playerWon, finalPlayerBoxes) { success ->
+                            isWatchingMatchAd = false
+                            hasClaimedMatchReward = success
+                        }
                     }
                 },
                 onClaimBonusReward = {
@@ -228,20 +231,23 @@ fun PracticeScreen(
                     val activity = context.findActivity()
                     if (activity != null) {
                         rewardedAdState.show(activity, onRewarded = {
-                            onClaimBonusCoins()
-                            isWatchingBonusAd = false
-                            hasClaimedBonusAd = true
+                            onClaimBonusCoins { success ->
+                                isWatchingBonusAd = false
+                                hasClaimedBonusAd = success
+                            }
                         }, onUnavailable = {
                             interstitialAdState.show(activity) {
-                                onClaimBonusCoins()
-                                isWatchingBonusAd = false
-                                hasClaimedBonusAd = true
+                                onClaimBonusCoins { success ->
+                                    isWatchingBonusAd = false
+                                    hasClaimedBonusAd = success
+                                }
                             }
                         }, onDismissedWithoutReward = { isWatchingBonusAd = false })
                     } else {
-                        onClaimBonusCoins()
-                        isWatchingBonusAd = false
-                        hasClaimedBonusAd = true
+                        onClaimBonusCoins { success ->
+                            isWatchingBonusAd = false
+                            hasClaimedBonusAd = success
+                        }
                     }
                 },
                 onPlayAgain = {

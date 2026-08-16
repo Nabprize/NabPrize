@@ -23,7 +23,8 @@ service cloud.firestore {
           'tickets', 'dailyAdsWatched', 'lastAdWatchDate', 'checkInDay',
           'lastCheckInDate', 'dailyTicketsEarned', 'lastResetDate',
           'currentTicketUsage', 'todayMatchesPlayed', 'todayCoinsEarned',
-          'lastPlayDate', 'processedMatchIds', 'createdAt', 'username', 'email', 'uid'
+          'lastPlayDate', 'processedMatchIds', 'createdAt', 'username', 'email', 'uid',
+          'totalPracticeMatches', 'lifetimeCoinsEarned'
         ];
         let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
         return changedKeys.hasOnly(allowedFields);

@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.ListenerRegistration
 import com.nabprize.play.data.UserProfile
 import com.nabprize.play.data.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ data class UserUiState(
 
 class UserViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = UserRepository()
+    private var profileListener: ListenerRegistration? = null
 
     private val _state = MutableStateFlow(UserUiState())
     val state: StateFlow<UserUiState> = _state
@@ -43,42 +45,8 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             _state.value = _state.value.copy(isLoading = true, error = null)
             val result = repo.fetchProfile()
             if (result.isSuccess) {
-                val profile = result.getOrNull() ?: UserProfile()
-
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val today = sdf.format(Date())
-                val cal = Calendar.getInstance()
-                cal.add(Calendar.DAY_OF_YEAR, -1)
-                val yesterday = sdf.format(cal.time)
-
-                val isCheckedInToday = profile.lastCheckInDate == today
-
-                val nextDay = when {
-                    isCheckedInToday -> profile.checkInDay
-                    profile.lastCheckInDate == yesterday -> if (profile.checkInDay >= 7) 1 else profile.checkInDay + 1
-                    else -> 1
-                }
-
-                val adsTowardTicket = if (profile.lastAdWatchDate == today) profile.dailyAdsWatched % 10 else 0
-                val capReached = if (profile.lastAdWatchDate == today) profile.dailyTicketsEarned >= 8 else false
-
-                // Today's match/coin stats — reset to 0 if last play date is not today
-                val todayMatches = if (profile.lastPlayDate == today) profile.todayMatchesPlayed else 0
-                val todayCoins = if (profile.lastPlayDate == today) profile.todayCoinsEarned else 0L
-
-                Log.d("UserViewModel", "Profile loaded: coins=${profile.npCoins}, tickets=${profile.tickets}, todayMatches=$todayMatches, todayCoins=$todayCoins")
-
-                _state.value = UserUiState(
-                    isLoading = false,
-                    profile = profile,
-                    checkInDay = profile.checkInDay,
-                    isCheckedInToday = isCheckedInToday,
-                    nextCheckInDay = nextDay,
-                    adsTowardNextTicket = adsTowardTicket,
-                    isDailyCapReached = capReached,
-                    todayMatchesPlayed = todayMatches,
-                    todayCoinsEarned = todayCoins
-                )
+                applyProfile(result.getOrNull() ?: UserProfile())
+                startProfileListener()
             } else {
                 Log.e("UserViewModel", "fetchProfile error: ${result.exceptionOrNull()?.message}")
                 _state.value = UserUiState(
@@ -87,6 +55,53 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    private fun startProfileListener() {
+        if (profileListener != null) return
+        profileListener = repo.observeProfile { result ->
+            if (result.isSuccess) {
+                applyProfile(result.getOrNull() ?: UserProfile())
+            } else {
+                Log.e("UserViewModel", "live profile error: ${result.exceptionOrNull()?.message}")
+            }
+        }
+    }
+
+    fun clearSession() {
+        profileListener?.remove()
+        profileListener = null
+        _state.value = UserUiState(isLoading = false)
+    }
+
+    private fun applyProfile(profile: UserProfile) {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val today = sdf.format(Date())
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterday = sdf.format(cal.time)
+        val isCheckedInToday = profile.lastCheckInDate == today
+        val nextDay = when {
+            isCheckedInToday -> profile.checkInDay
+            profile.lastCheckInDate == yesterday -> if (profile.checkInDay >= 7) 1 else profile.checkInDay + 1
+            else -> 1
+        }
+        val todayMatches = if (profile.lastPlayDate == today) profile.todayMatchesPlayed else 0
+        val todayCoins = if (profile.lastPlayDate == today) profile.todayCoinsEarned else 0L
+        _state.value = UserUiState(
+            isLoading = false,
+            profile = profile,
+            checkInDay = profile.checkInDay,
+            isCheckedInToday = isCheckedInToday,
+            nextCheckInDay = nextDay,
+            todayMatchesPlayed = todayMatches,
+            todayCoinsEarned = todayCoins
+        )
+    }
+
+    override fun onCleared() {
+        clearSession()
+        super.onCleared()
     }
 
     fun dailyCheckIn() {
@@ -160,24 +175,35 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addCoins(amount: Long) {
+    fun addCoins(amount: Long, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             Log.d("UserViewModel", "addCoins requested: +$amount")
             val res = repo.addCoins(amount)
             if (res.isSuccess) {
                 Log.d("UserViewModel", "addCoins success: +$amount")
                 fetchProfile()
+                onComplete(true)
             } else {
-                Log.e("UserViewModel", "addCoins failed: ${res.exceptionOrNull()?.message}")
+                val error = res.exceptionOrNull()?.message ?: "Coins add nahi ho sake"
+                Log.e("UserViewModel", "addCoins failed: $error")
+                _state.value = _state.value.copy(error = error)
+                onComplete(false)
             }
         }
     }
 
-    fun recordPracticeResult(isWin: Boolean, boxesCaptured: Int) {
+    fun recordPracticeResult(isWin: Boolean, boxesCaptured: Int, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             val result = repo.recordPracticeResult(isWin, boxesCaptured)
-            if (result.isSuccess) fetchProfile()
-            else Log.e("UserViewModel", "recordPracticeResult failed: ${result.exceptionOrNull()?.message}")
+            if (result.isSuccess) {
+                fetchProfile()
+                onComplete(true)
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Practice reward add nahi ho saka"
+                Log.e("UserViewModel", "recordPracticeResult failed: $error")
+                _state.value = _state.value.copy(error = error)
+                onComplete(false)
+            }
         }
     }
 

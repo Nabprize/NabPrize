@@ -5,6 +5,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
@@ -46,6 +47,20 @@ class UserRepository {
     private val redemptionsCol = db.collection("redemptions")
 
     private fun uid() = auth.currentUser?.uid
+
+    /** Keeps Home and Profile in sync with Firestore changes from any active app screen. */
+    fun observeProfile(onChanged: (Result<UserProfile>) -> Unit): ListenerRegistration? {
+        val id = uid() ?: return null
+        return usersCol.document(id).addSnapshotListener { snapshot, error ->
+            when {
+                error != null -> onChanged(Result.failure(error))
+                snapshot?.exists() == true -> {
+                    val profile = snapshot.toObject(UserProfile::class.java) ?: UserProfile(uid = id)
+                    onChanged(Result.success(profile))
+                }
+            }
+        }
+    }
 
     // ─── Fetch User Profile (with Midnight Reset) ─────────────
 
@@ -126,6 +141,7 @@ class UserRepository {
     suspend fun addCoins(amount: Long): Result<Unit> {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
+            if (amount != 10L) return Result.failure(Exception("Invalid bonus reward"))
             val today = getTodayDate()
             val updates = hashMapOf<String, Any>(
                 "npCoins" to FieldValue.increment(amount),
@@ -154,7 +170,8 @@ class UserRepository {
             )
             // Practice rewards are based on skill: every captured box is 1 NP-Coin,
             // whether the player wins or loses the game.
-            val rewardCoins = boxesCaptured.coerceAtLeast(0).toLong()
+            // A 5x4 dots-and-boxes board has 16 claimable boxes at most.
+            val rewardCoins = boxesCaptured.coerceIn(0, 16).toLong()
             updates["npCoins"] = FieldValue.increment(rewardCoins)
             updates["todayCoinsEarned"] = FieldValue.increment(rewardCoins)
             updates["lifetimeCoinsEarned"] = FieldValue.increment(rewardCoins)
