@@ -295,9 +295,7 @@ private fun EntryScreen(
 ) {
     val metrics = rememberResponsiveMetrics()
     val pagerState = rememberPagerState(pageCount = { tipSlides.size })
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
+    LaunchedEffect(pagerState) {
         while (true) {
             delay(3500)
             val nextPage = (pagerState.currentPage + 1) % tipSlides.size
@@ -347,60 +345,96 @@ private fun EntryScreen(
                     ambientColor = Color(0x10000000), spotColor = Color(0x10000000))
                 .clip(RoundedCornerShape(20.dp))
                 .background(CardWhite)
-                .padding(if (metrics.isCompact) 18.dp else 28.dp),
+                .padding(if (metrics.isCompact) 18.dp else 22.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(if (metrics.isCompact) 60.dp else 72.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryOrange),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(Icons.Filled.SmartToy, null,
-                        modifier = Modifier.size(if (metrics.isCompact) 30.dp else 36.dp), tint = Color.White)
+                    MatchupAvatar(
+                        modifier = Modifier.weight(1f),
+                        label = "You",
+                        icon = Icons.Filled.Person,
+                        color = PrimaryOrange
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(AccentGold.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("VS", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, color = AccentGold))
+                    }
+                    MatchupAvatar(
+                        modifier = Modifier.weight(1f),
+                        label = "NabBot",
+                        icon = Icons.Filled.SmartToy,
+                        color = SecondaryPurple
+                    )
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(18.dp))
 
-                Text("You vs NabBot",
+                Text("Own the board",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = if (metrics.isCompact) 18.sp else 20.sp))
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
 
-                Text("5x4 board. Complete a box, take another turn. 15 seconds per move.",
+                Text("Close a box, keep your turn, and earn for every box you capture.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 20.sp),
                     textAlign = TextAlign.Center)
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GameFeature(modifier = Modifier.weight(1f), value = "5×4", label = "Board")
+                    GameFeature(modifier = Modifier.weight(1f), value = "15s", label = "Turn")
+                    GameFeature(modifier = Modifier.weight(1f), value = "1", label = "Coin / box")
+                }
 
+                Spacer(Modifier.height(18.dp))
+                NabPrizeButton(
+                    text = "Start Playing",
+                    onClick = onStart,
+                    leadingIcon = {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (metrics.isCompact) 14.dp else 20.dp, vertical = 2.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(PrimaryOrange.copy(alpha = 0.09f))
+                .border(1.dp, PrimaryOrange.copy(alpha = 0.16f), RoundedCornerShape(18.dp))
+                .padding(horizontal = 16.dp, vertical = 13.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(PrimaryOrange)
-                        .clickable { onStart() }
-                        .padding(vertical = 16.dp),
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(PrimaryOrange),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⚡", fontSize = 18.sp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Start Playing",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp))
-                    }
+                    Icon(Icons.Outlined.MonetizationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("How rewards work", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
+                    Text("Each captured box is 1 NP-Coin. Claim it after the match with a short ad.", style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
                 }
             }
         }
 
-        // ── Ticket progress card ──
         // ── Tips & Tricks Carousel ──
         Column(modifier = Modifier.padding(top = 8.dp)) {
             Row(
@@ -470,6 +504,45 @@ private fun EntryScreen(
         }
 
         Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun MatchupAvatar(
+    modifier: Modifier = Modifier,
+    label: String,
+    icon: ImageVector,
+    color: Color
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.10f))
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier.size(38.dp).clip(CircleShape).background(color),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp))
+        }
+        Spacer(Modifier.height(5.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
+    }
+}
+
+@Composable
+private fun GameFeature(modifier: Modifier = Modifier, value: String, label: String) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(CreamBackground)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(value, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold, color = PrimaryOrange))
+        Text(label, style = MaterialTheme.typography.labelSmall.copy(color = TextTertiary), maxLines = 1)
     }
 }
 
