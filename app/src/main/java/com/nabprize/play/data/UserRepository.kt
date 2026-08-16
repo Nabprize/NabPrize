@@ -141,7 +141,7 @@ class UserRepository {
     suspend fun addCoins(amount: Long): Result<Unit> {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
-            if (amount != 10L) return Result.failure(Exception("Invalid bonus reward"))
+            if (amount != 5L) return Result.failure(Exception("Invalid bonus reward"))
             val today = getTodayDate()
             val updates = hashMapOf<String, Any>(
                 "npCoins" to FieldValue.increment(amount),

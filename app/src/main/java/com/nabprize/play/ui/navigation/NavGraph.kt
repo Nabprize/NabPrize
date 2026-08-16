@@ -220,7 +220,7 @@ fun NabPrizeNavGraph(
                     userViewModel.recordPracticeResult(isWin, boxesCaptured, onComplete)
                 },
                 onClaimBonusCoins = { onComplete ->
-                    userViewModel.addCoins(10, onComplete)
+                    userViewModel.addCoins(5, onComplete)
                 },
                 onBack = { navController.popBackStack() }
             )

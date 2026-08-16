@@ -822,9 +822,9 @@ private fun MvpResultContent(
     NabPrizeButton(
         text = when {
             isWatchingBonusAd -> "Ad playing..."
-            hasClaimedBonusAd -> "✓ +10 bonus NP-Coins claimed"
+            hasClaimedBonusAd -> "✓ +5 bonus NP-Coins claimed"
             !hasClaimedMatchReward -> "Claim match reward first"
-            else -> "Watch Ad for +10 bonus NP-Coins"
+            else -> "Watch Ad for +5 bonus NP-Coins"
         },
         onClick = onClaimBonusReward,
         enabled = hasClaimedMatchReward && !isWatchingBonusAd && !hasClaimedBonusAd,
