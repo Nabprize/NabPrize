@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.outlined.LocalActivity
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -92,7 +91,6 @@ fun NabPrizeNavGraph(
     val bottomTabs = listOf(
         BottomTab(Routes.HOME, "Home", Icons.Default.Home),
         BottomTab(Routes.PRACTICE, "Play & Earn", Icons.Default.SportsEsports),
-        BottomTab(Routes.MATCHMAKING, "Challenge", Icons.Outlined.LocalActivity),
         BottomTab(Routes.REWARDS, "Rewards", Icons.Default.EmojiEvents)
     )
     // Practice needs the full height for the board and its entry content.
@@ -117,19 +115,15 @@ fun NabPrizeNavGraph(
                     tonalElevation = 0.dp
                 ) {
                     bottomTabs.forEach { tab ->
-                        val tabEnabled = tab.route != Routes.MATCHMAKING || FeatureFlags.CHALLENGE_ENABLED
                         NavigationBarItem(
                             selected = currentRoute == tab.route,
                             onClick = {
-                                if (tabEnabled) {
-                                    navController.navigate(tab.route) {
-                                        popUpTo(Routes.HOME) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                navController.navigate(tab.route) {
+                                    popUpTo(Routes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             },
-                            enabled = tabEnabled,
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = { Text(tab.label) },
                             colors = NavigationBarItemDefaults.colors(
@@ -166,8 +160,6 @@ fun NabPrizeNavGraph(
             HomeScreen(
                 username = userState.profile.displayName.ifBlank { userState.profile.username }.ifBlank { "Player" },
                 npCoins = userState.profile.npCoins,
-                tickets = userState.profile.tickets,
-                totalWins = userState.profile.totalWins,
                 todayMatchesPlayed = userState.todayMatchesPlayed,
                 todayCoinsEarned = userState.todayCoinsEarned,
                 checkInDay = userState.checkInDay,
@@ -176,11 +168,6 @@ fun NabPrizeNavGraph(
                 onAvatarClick          = { navController.navigate(Routes.PROFILE) },
                 onNextAchievementClick = { navController.navigate(Routes.REWARDS) },
                 onPracticeClick        = { navController.navigate(Routes.PRACTICE) },
-                onChallengeClick       = {
-                    if (FeatureFlags.CHALLENGE_ENABLED && userState.profile.tickets > 0) {
-                        navController.navigate(Routes.MATCHMAKING)
-                    }
-                },
                 onRewardsClick         = { navController.navigate(Routes.REWARDS) },
                 onDailyCheckinClick    = {
                     // Use findActivity() instead of direct cast to avoid silent null failures
@@ -202,9 +189,8 @@ fun NabPrizeNavGraph(
                 displayName = userState.profile.displayName,
                 username = userState.profile.username,
                 email = userState.profile.email,
-                totalWins = userState.profile.totalWins,
-                totalLosses = userState.profile.totalLosses,
-                npCoins = userState.profile.npCoins,
+                totalPracticeMatches = userState.profile.totalPracticeMatches,
+                lifetimeCoinsEarned = userState.profile.lifetimeCoinsEarned,
                 onBack = { navController.popBackStack() },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -226,15 +212,11 @@ fun NabPrizeNavGraph(
 
         composable(Routes.PRACTICE) {
             PracticeScreen(
-                tickets = userState.profile.tickets,
-                dailyTicketsEarned = userState.profile.dailyTicketsEarned,
-                adsTowardTicket = userState.adsTowardNextTicket,
-                isDailyCapReached = userState.isDailyCapReached,
-                onPracticeResult = { isWin, boxesCaptured ->
+                onClaimPracticeReward = { isWin, boxesCaptured ->
                     userViewModel.recordPracticeResult(isWin, boxesCaptured)
                 },
-                onWatchTicketAd = {
-                    userViewModel.watchRewardedAdForTicket()
+                onClaimBonusCoins = {
+                    userViewModel.addCoins(10)
                 },
                 onBack = { navController.popBackStack() }
             )

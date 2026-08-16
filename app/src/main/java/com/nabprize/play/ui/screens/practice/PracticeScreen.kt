@@ -109,20 +109,18 @@ import kotlinx.coroutines.launch
 
 private enum class PracticePhase { ENTRY, PLAYING, RESULT }
 
-private const val TICKET_CAP        = 8
-private const val ADS_PER_TICKET    = 10
+// Legacy ticket result composables remain below for a future multiplayer release;
+// they are not reachable from the MVP flow.
+private const val TICKET_CAP = 8
+private const val ADS_PER_TICKET = 10
 
 // ─── Practice Screen ─────────────────────────────────────────────────────────
 
 @Composable
 fun PracticeScreen(
     modifier: Modifier = Modifier,
-    tickets: Int = 0,
-    dailyTicketsEarned: Int = 0,
-    adsTowardTicket: Int = 0,
-    isDailyCapReached: Boolean = false,
-    onPracticeResult: (isWin: Boolean, boxesCaptured: Int) -> Unit = { _, _ -> },
-    onWatchTicketAd: () -> Unit = {},
+    onClaimPracticeReward: (isWin: Boolean, boxesCaptured: Int) -> Unit = { _, _ -> },
+    onClaimBonusCoins: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -133,9 +131,10 @@ fun PracticeScreen(
     var playerWon    by remember { mutableStateOf(true) }
     var finalPlayerBoxes by remember { mutableStateOf(0) }
     var finalBotBoxes by remember { mutableStateOf(0) }
-    var hasRecordedResult by remember { mutableStateOf(false) }
-    var isWatchingTicketAd by remember { mutableStateOf(false) }
-    var hasClaimedTicketAd by remember { mutableStateOf(false) }
+    var isWatchingMatchAd by remember { mutableStateOf(false) }
+    var hasClaimedMatchReward by remember { mutableStateOf(false) }
+    var isWatchingBonusAd by remember { mutableStateOf(false) }
+    var hasClaimedBonusAd by remember { mutableStateOf(false) }
 
     // When it's the bot's turn, schedule a bot move after a short delay
     LaunchedEffect(boardState, phase) {
@@ -149,10 +148,6 @@ fun PracticeScreen(
             playerWon = won
             finalPlayerBoxes = boardState.playerScore
             finalBotBoxes = boardState.botScore
-            if (!hasRecordedResult) {
-                hasRecordedResult = true
-                onPracticeResult(won, boardState.playerScore)
-            }
             delay(600)
             phase = PracticePhase.RESULT
         }
@@ -169,14 +164,13 @@ fun PracticeScreen(
         when (currentPhase) {
             PracticePhase.ENTRY -> EntryScreen(
                 modifier = modifier,
-                adsTowardTicket = adsTowardTicket,
                 onBack = onBack,
                 onStart = {
                     boardState = BoardState()
                     finalPlayerBoxes = 0
                     finalBotBoxes = 0
-                    hasRecordedResult = false
-                    hasClaimedTicketAd = false
+                    hasClaimedMatchReward = false
+                    hasClaimedBonusAd = false
                     phase = PracticePhase.PLAYING
                 }
             )
@@ -195,49 +189,67 @@ fun PracticeScreen(
                 playerWon = playerWon,
                 boxesCaptured = finalPlayerBoxes,
                 botBoxes = finalBotBoxes,
-                isPostCap = isDailyCapReached,
-                dailyTicketsEarned = dailyTicketsEarned,
-                adsWatched = adsTowardTicket,
-                isWatchingAd = isWatchingTicketAd,
-                hasClaimedAd = hasClaimedTicketAd,
-                onWatchTicketAd = {
-                    if (isWatchingTicketAd || hasClaimedTicketAd) return@ResultScreen
-                    isWatchingTicketAd = true
+                isWatchingMatchAd = isWatchingMatchAd,
+                hasClaimedMatchReward = hasClaimedMatchReward,
+                isWatchingBonusAd = isWatchingBonusAd,
+                hasClaimedBonusAd = hasClaimedBonusAd,
+                onClaimMatchReward = {
+                    if (isWatchingMatchAd || hasClaimedMatchReward) return@ResultScreen
+                    isWatchingMatchAd = true
                     val activity = context.findActivity()
                     if (activity != null) {
                         rewardedAdState.show(
                             activity = activity,
                             onRewarded = {
-                                onWatchTicketAd()
-                                isWatchingTicketAd = false
-                                hasClaimedTicketAd = true
+                                onClaimPracticeReward(playerWon, finalPlayerBoxes)
+                                isWatchingMatchAd = false
+                                hasClaimedMatchReward = true
                             },
                             onUnavailable = {
-                                // PRD fallback: count the opt-in ad attempt if rewarded inventory
-                                // is unavailable, while still allowing the user to continue.
                                 interstitialAdState.show(activity) {
-                                    onWatchTicketAd()
-                                    isWatchingTicketAd = false
-                                    hasClaimedTicketAd = true
+                                    onClaimPracticeReward(playerWon, finalPlayerBoxes)
+                                    isWatchingMatchAd = false
+                                    hasClaimedMatchReward = true
                                 }
                             },
                             onDismissedWithoutReward = {
-                                // Closing before reward must not leave the CTA locked.
-                                isWatchingTicketAd = false
+                                isWatchingMatchAd = false
                             }
                         )
                     } else {
-                        onWatchTicketAd()
-                        isWatchingTicketAd = false
-                        hasClaimedTicketAd = true
+                        onClaimPracticeReward(playerWon, finalPlayerBoxes)
+                        isWatchingMatchAd = false
+                        hasClaimedMatchReward = true
+                    }
+                },
+                onClaimBonusReward = {
+                    if (isWatchingBonusAd || hasClaimedBonusAd || !hasClaimedMatchReward) return@ResultScreen
+                    isWatchingBonusAd = true
+                    val activity = context.findActivity()
+                    if (activity != null) {
+                        rewardedAdState.show(activity, onRewarded = {
+                            onClaimBonusCoins()
+                            isWatchingBonusAd = false
+                            hasClaimedBonusAd = true
+                        }, onUnavailable = {
+                            interstitialAdState.show(activity) {
+                                onClaimBonusCoins()
+                                isWatchingBonusAd = false
+                                hasClaimedBonusAd = true
+                            }
+                        }, onDismissedWithoutReward = { isWatchingBonusAd = false })
+                    } else {
+                        onClaimBonusCoins()
+                        isWatchingBonusAd = false
+                        hasClaimedBonusAd = true
                     }
                 },
                 onPlayAgain = {
                     boardState = BoardState()
                     finalPlayerBoxes = 0
                     finalBotBoxes = 0
-                    hasRecordedResult = false
-                    hasClaimedTicketAd = false
+                    hasClaimedMatchReward = false
+                    hasClaimedBonusAd = false
                     phase = PracticePhase.PLAYING
                 },
                 onHome = onBack
@@ -263,8 +275,8 @@ private val tipSlides = listOf(
         "Beat the bot to earn NP-Coins. The more boxes you claim, the bigger your reward!"),
     TipSlide("💡", "Pro Tip",
         "Watch out for 3-sided boxes — whoever completes the 4th side claims it. Don't set up the bot!"),
-    TipSlide("🎟", "Earn Tickets",
-        "Watch short ads to earn tickets. Use tickets to enter competitive matches for bigger prizes."),
+    TipSlide("📺", "Claim Your Reward",
+        "After each match, watch one short ad to claim the NP-Coins from your boxes."),
     TipSlide("⚡", "Speed Matters",
         "You have 15 seconds per move. Stay sharp — fast thinking beats the bot every time!")
 )
@@ -272,7 +284,6 @@ private val tipSlides = listOf(
 @Composable
 private fun EntryScreen(
     modifier: Modifier = Modifier,
-    adsTowardTicket: Int = 0,
     onBack: () -> Unit,
     onStart: () -> Unit
 ) {
@@ -312,7 +323,7 @@ private fun EntryScreen(
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold, color = TextPrimary,
                         fontSize = if (metrics.isCompact) 20.sp else 22.sp))
-                Text("Free play — no ticket needed",
+                Text("Play anytime and earn NP-Coins",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = TextSecondary, fontSize = if (metrics.isCompact) 12.sp else 13.sp))
             }
@@ -384,60 +395,6 @@ private fun EntryScreen(
         }
 
         // ── Ticket progress card ──
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = if (metrics.isCompact) 14.dp else 20.dp, vertical = 8.dp)
-                .shadow(3.dp, RoundedCornerShape(18.dp),
-                    ambientColor = Color(0x0D000000), spotColor = Color(0x0D000000))
-                .clip(RoundedCornerShape(18.dp))
-                .background(CardWhite)
-                .padding(if (metrics.isCompact) 16.dp else 20.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(PrimaryOrange.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Outlined.LocalActivity, null,
-                            tint = PrimaryOrange, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text("Ticket progress",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp))
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(StatGreen.copy(alpha = 0.15f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction = (adsTowardTicket.toFloat() / ADS_PER_TICKET).coerceIn(0f, 1f))
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(50))
-                            .background(StatGreen)
-                    )
-                }
-
-                Spacer(Modifier.height(10.dp))
-
-                Text("$adsTowardTicket / $ADS_PER_TICKET ads toward your next ticket",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary, fontSize = 13.sp))
-            }
-        }
-
         // ── Tips & Tricks Carousel ──
         Column(modifier = Modifier.padding(top = 8.dp)) {
             Row(
@@ -763,12 +720,12 @@ private fun ResultScreen(
     playerWon: Boolean,
     boxesCaptured: Int = 0,
     botBoxes: Int = 0,
-    isPostCap: Boolean,
-    dailyTicketsEarned: Int = 0,
-    adsWatched: Int,
-    isWatchingAd: Boolean = false,
-    hasClaimedAd: Boolean = false,
-    onWatchTicketAd: () -> Unit,
+    isWatchingMatchAd: Boolean,
+    hasClaimedMatchReward: Boolean,
+    isWatchingBonusAd: Boolean,
+    hasClaimedBonusAd: Boolean,
+    onClaimMatchReward: () -> Unit,
+    onClaimBonusReward: () -> Unit,
     onPlayAgain: () -> Unit,
     onHome: () -> Unit
 ) {
@@ -782,31 +739,94 @@ private fun ResultScreen(
     ) {
         Spacer(Modifier.height(52.dp))
 
-        if (isPostCap) {
-            PostCapResultContent(
-                playerWon = playerWon,
-                boxesCaptured = boxesCaptured,
-                botBoxes = botBoxes,
-                onPlayAgain = onPlayAgain,
-                onHome = onHome
-            )
-        } else {
-            NormalResultContent(
-                playerWon = playerWon,
-                boxesCaptured = boxesCaptured,
-                botBoxes = botBoxes,
-                dailyTicketsEarned = dailyTicketsEarned,
-                adsWatched = adsWatched,
-                isWatchingAd = isWatchingAd,
-                hasClaimedAd = hasClaimedAd,
-                onWatchTicketAd = onWatchTicketAd,
-                onPlayAgain = onPlayAgain,
-                onHome = onHome
-            )
-        }
+        MvpResultContent(
+            playerWon = playerWon,
+            boxesCaptured = boxesCaptured,
+            botBoxes = botBoxes,
+            isWatchingMatchAd = isWatchingMatchAd,
+            hasClaimedMatchReward = hasClaimedMatchReward,
+            isWatchingBonusAd = isWatchingBonusAd,
+            hasClaimedBonusAd = hasClaimedBonusAd,
+            onClaimMatchReward = onClaimMatchReward,
+            onClaimBonusReward = onClaimBonusReward,
+            onPlayAgain = onPlayAgain,
+            onHome = onHome
+        )
 
         Spacer(Modifier.height(40.dp))
     }
+}
+
+@Composable
+private fun MvpResultContent(
+    playerWon: Boolean,
+    boxesCaptured: Int,
+    botBoxes: Int,
+    isWatchingMatchAd: Boolean,
+    hasClaimedMatchReward: Boolean,
+    isWatchingBonusAd: Boolean,
+    hasClaimedBonusAd: Boolean,
+    onClaimMatchReward: () -> Unit,
+    onClaimBonusReward: () -> Unit,
+    onPlayAgain: () -> Unit,
+    onHome: () -> Unit
+) {
+    ResultHero(playerWon)
+    Spacer(Modifier.height(20.dp))
+    MatchSummaryCard(playerWon, boxesCaptured, botBoxes, earnedCoins = boxesCaptured)
+    Spacer(Modifier.height(20.dp))
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(24.dp), ambientColor = PrimaryOrange.copy(0.10f), spotColor = PrimaryOrange.copy(0.10f))
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White)
+            .padding(20.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            NpCoinImage(size = 42.dp)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = if (hasClaimedMatchReward) "$boxesCaptured NP-Coins claimed" else "Claim $boxesCaptured NP-Coins",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = if (hasClaimedMatchReward) StatGreen else TextPrimary)
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = if (hasClaimedMatchReward) "Your match reward is safely added to your balance."
+                else "Watch one short ad to add this match reward to your balance.",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary, textAlign = TextAlign.Center),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(18.dp))
+            NabPrizeButton(
+                text = when {
+                    isWatchingMatchAd -> "Ad playing..."
+                    hasClaimedMatchReward -> "✓ Match reward claimed"
+                    boxesCaptured == 0 -> "No NP-Coins this match"
+                    else -> "Watch Ad & Claim $boxesCaptured NP-Coins"
+                },
+                onClick = onClaimMatchReward,
+                enabled = boxesCaptured > 0 && !isWatchingMatchAd && !hasClaimedMatchReward
+            )
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    NabPrizeButton(
+        text = when {
+            isWatchingBonusAd -> "Ad playing..."
+            hasClaimedBonusAd -> "✓ +10 bonus NP-Coins claimed"
+            !hasClaimedMatchReward -> "Claim match reward first"
+            else -> "Watch Ad for +10 bonus NP-Coins"
+        },
+        onClick = onClaimBonusReward,
+        enabled = hasClaimedMatchReward && !isWatchingBonusAd && !hasClaimedBonusAd,
+        backgroundColor = AccentGold,
+        contentColor = TextPrimary
+    )
+    Spacer(Modifier.height(24.dp))
+    ActionButtons(onPlayAgain, onHome)
 }
 
 // ─── 3a. Normal Result ────────────────────────────────────────────────────────

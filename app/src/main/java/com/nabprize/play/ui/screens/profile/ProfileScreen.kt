@@ -63,9 +63,8 @@ fun ProfileScreen(
     displayName: String = "Player",
     username: String = "",
     email: String = "",
-    totalWins: Long = 0,
-    totalLosses: Long = 0,
-    npCoins: Long = 0,
+    totalPracticeMatches: Long = 0,
+    lifetimeCoinsEarned: Long = 0,
     onBack: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
@@ -169,56 +168,16 @@ fun ProfileScreen(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.SportsEsports,
                 iconTint = PrimaryOrange,
-                label = "Matches",
-                value = "${totalWins + totalLosses}"
+                label = "Practice Matches",
+                value = "$totalPracticeMatches"
             )
             ProfileStatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.TrendingUp,
                 iconTint = StatGreen,
-                label = "Win Record",
-                value = "$totalWins W"
+                label = "NP-Coins Earned",
+                value = "$lifetimeCoinsEarned"
             )
-            // NP-Coins stat uses the real brand logo
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = AccentGold.copy(0.3f),
-                        spotColor = AccentGold.copy(0.3f)
-                    )
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(Color.White, Color(0xFFFFFDF5))
-                        )
-                    )
-                    .border(1.5.dp, AccentGold.copy(0.4f), RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Column {
-                    NpCoinImage(size = 32.dp)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "$npCoins",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextPrimary,
-                            fontSize = 18.sp
-                        )
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "Coins Earned",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-                }
-            }
         }
 
         Spacer(Modifier.height(32.dp))

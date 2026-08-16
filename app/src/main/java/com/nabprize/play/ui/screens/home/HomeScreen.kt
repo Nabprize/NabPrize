@@ -80,8 +80,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     username: String = "Player",
     npCoins: Long = 0,
-    tickets: Int = 0,
-    totalWins: Long = 0,
     todayMatchesPlayed: Int = 0,
     todayCoinsEarned: Long = 0,
     checkInDay: Int = 0,
@@ -90,14 +88,12 @@ fun HomeScreen(
     onAvatarClick: () -> Unit = {},
     onNextAchievementClick: () -> Unit = {},
     onPracticeClick: () -> Unit = {},
-    onChallengeClick: () -> Unit = {},
     onRewardsClick: () -> Unit = {},
     onDailyCheckinClick: () -> Unit = {}
 ) {
     val metrics = rememberResponsiveMetrics()
     val nextThreshold = 1500L
     val achievementProgress = (npCoins.toFloat() / nextThreshold.toFloat()).coerceIn(0f, 1f)
-    val canChallenge = tickets > 0
 
     Column(
         modifier = modifier
@@ -116,25 +112,11 @@ fun HomeScreen(
         Spacer(Modifier.height(24.dp))
 
         // ── 2. Ticket + NP-Coins stat row ─────────────────────────
-        Row(
+        NpCoinStatCard(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            StatCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.LocalActivity,
-                badgeColor = PrimaryOrange,
-                label = "Tickets",
-                value = "$tickets",
-                valueColor = PrimaryOrange,
-                caption = "used to play 1v1"
-            )
-            NpCoinStatCard(
-                modifier = Modifier.weight(1f),
-                value = "$npCoins",
-                caption = "to get the reward"
-            )
-        }
+            value = "$npCoins",
+            caption = "earn more by playing"
+        )
 
         Spacer(Modifier.height(if (metrics.isCompact) 14.dp else 18.dp))
 
@@ -155,10 +137,6 @@ fun HomeScreen(
         Spacer(Modifier.height(18.dp))
 
         // ── 5. Challenge a Player ─────────────────────────────────
-        ChallengeCard(canChallenge = canChallenge, onClick = onChallengeClick)
-
-        Spacer(Modifier.height(18.dp))
-
         // ── 6. Rewards preview ────────────────────────────────────
         RewardsCard(npCoins = npCoins, onClick = onRewardsClick)
 

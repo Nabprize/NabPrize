@@ -21,6 +21,8 @@ data class UserProfile(
     val npCoins: Long = 0,
     val totalWins: Long = 0,
     val totalLosses: Long = 0,
+    val totalPracticeMatches: Long = 0,
+    val lifetimeCoinsEarned: Long = 0,
     val tickets: Int = 0,
     val dailyAdsWatched: Int = 0,
     val lastAdWatchDate: String = "",
@@ -128,6 +130,7 @@ class UserRepository {
             val updates = hashMapOf<String, Any>(
                 "npCoins" to FieldValue.increment(amount),
                 "todayCoinsEarned" to FieldValue.increment(amount),
+                "lifetimeCoinsEarned" to FieldValue.increment(amount),
                 "lastPlayDate" to today
             )
             usersCol.document(id).set(updates, SetOptions.merge()).await()
@@ -146,6 +149,7 @@ class UserRepository {
             val today = getTodayDate()
             val updates = hashMapOf<String, Any>(
                 "todayMatchesPlayed" to FieldValue.increment(1L),
+                "totalPracticeMatches" to FieldValue.increment(1L),
                 "lastPlayDate" to today
             )
             // Practice rewards are based on skill: every captured box is 1 NP-Coin,
@@ -153,6 +157,7 @@ class UserRepository {
             val rewardCoins = boxesCaptured.coerceAtLeast(0).toLong()
             updates["npCoins"] = FieldValue.increment(rewardCoins)
             updates["todayCoinsEarned"] = FieldValue.increment(rewardCoins)
+            updates["lifetimeCoinsEarned"] = FieldValue.increment(rewardCoins)
             usersCol.document(id).set(updates, SetOptions.merge()).await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -193,6 +198,7 @@ class UserRepository {
                     "npCoins" to FieldValue.increment(coinReward),
                     "todayMatchesPlayed" to FieldValue.increment(1L),
                     "todayCoinsEarned" to FieldValue.increment(coinReward),
+                    "lifetimeCoinsEarned" to FieldValue.increment(coinReward),
                     "lastPlayDate" to today,
                     "processedMatchIds" to FieldValue.arrayUnion(matchId)
                 )
@@ -348,6 +354,7 @@ class UserRepository {
                     "lastCheckInDate" to today,
                     "npCoins" to FieldValue.increment(rewardCoins),
                     "todayCoinsEarned" to FieldValue.increment(rewardCoins),
+                    "lifetimeCoinsEarned" to FieldValue.increment(rewardCoins),
                     "lastPlayDate" to today
                 ), SetOptions.merge())
                 Pair(newDay, rewardCoins)
