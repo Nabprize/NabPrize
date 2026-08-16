@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
@@ -93,8 +94,9 @@ fun NabPrizeNavGraph(
         BottomTab(Routes.PRACTICE, "Play & Earn", Icons.Default.SportsEsports),
         BottomTab(Routes.REWARDS, "Rewards", Icons.Default.EmojiEvents)
     )
-    // Practice needs the full height for the board and its entry content.
-    val showBottomBar = currentRoute in bottomTabs.map { it.route } && currentRoute != Routes.PRACTICE
+    // All MVP destinations keep the primary navigation visible. Practice can still scroll
+    // its board/content within the Scaffold area on compact devices.
+    val showBottomBar = currentRoute in bottomTabs.map { it.route }
 
     LaunchedEffect(userState.error, userState.successMessage) {
         val message = userState.error ?: userState.successMessage
@@ -119,7 +121,7 @@ fun NabPrizeNavGraph(
                             selected = currentRoute == tab.route,
                             onClick = {
                                 navController.navigate(tab.route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
