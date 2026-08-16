@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -159,7 +158,6 @@ fun RewardsScreen(
             .background(CreamBackground)
             .padding(horizontal = metrics.horizontalPadding)
             .padding(WindowInsets.statusBars.asPaddingValues())
-            .padding(WindowInsets.navigationBars.asPaddingValues())
     ) {
         Spacer(Modifier.height(if (metrics.isCompact) 16.dp else 24.dp))
 
@@ -238,7 +236,9 @@ fun RewardsScreen(
                     onClaim = { selectedReward = tier }
                 )
             }
-            Spacer(Modifier.height(40.dp))
+            // Scaffold already reserves the bottom navigation area; keep only a small
+            // scroll-end breathing room instead of a second navigation-bar inset.
+            Spacer(Modifier.height(12.dp))
         }
     }
 
