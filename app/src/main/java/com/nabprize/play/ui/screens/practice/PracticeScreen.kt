@@ -220,6 +220,10 @@ fun PracticeScreen(
                                     isWatchingTicketAd = false
                                     hasClaimedTicketAd = true
                                 }
+                            },
+                            onDismissedWithoutReward = {
+                                // Closing before reward must not leave the CTA locked.
+                                isWatchingTicketAd = false
                             }
                         )
                     } else {

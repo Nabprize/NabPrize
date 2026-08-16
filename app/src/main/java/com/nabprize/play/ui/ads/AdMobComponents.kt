@@ -142,10 +142,12 @@ fun AdMobNativeAd(modifier: Modifier = Modifier) {
                     setBackgroundColor(0xFF1A73E8.toInt())
                 }
 
+                // Keep the media asset inside the fixed Compose ad slot. The old 240/300px
+                // media height exceeded the 200/230dp parent on smaller phones.
                 val mediaView = MediaView(ctx).apply {
                     layoutParams = android.widget.FrameLayout.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        if (metrics.isCompact) 240 else 300
+                        if (metrics.isCompact) 92 else 112
                     )
                 }
 
@@ -257,14 +259,17 @@ class RewardedAdState {
     fun show(
         activity: Activity,
         onRewarded: () -> Unit = {},
-        onUnavailable: () -> Unit = {}
+        onUnavailable: () -> Unit = {},
+        onDismissedWithoutReward: () -> Unit = {}
     ) {
         val currentAd = ad
         if (currentAd != null) {
             currentAd.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdDismissedFullScreenContent() {
+                    val earnedReward = isRewarded
                     ad = null
                     isRewarded = false
+                    if (!earnedReward) onDismissedWithoutReward()
                     load(activity)
                 }
                 override fun onAdFailedToShowFullScreenContent(error: AdError) {

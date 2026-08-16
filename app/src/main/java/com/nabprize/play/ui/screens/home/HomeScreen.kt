@@ -971,7 +971,7 @@ private fun TodayStatsCard(matchesPlayed: Int, coinsEarned: Int) {
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "● Challenge",
+                    text = "Today's activity",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = StatGreen,
                         fontWeight = FontWeight.Bold

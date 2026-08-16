@@ -246,32 +246,31 @@ class UserRepository {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
             val today = getTodayDate()
-            val doc = usersCol.document(id).get().await()
+            val userRef = usersCol.document(id)
+            val outcome = db.runTransaction { transaction ->
+                val doc = transaction.get(userRef)
+                val lastAdDate = doc.getString("lastAdWatchDate") ?: ""
+                val dailyAds = if (lastAdDate == today) (doc.getLong("dailyAdsWatched") ?: 0).toInt() else 0
+                val dailyTickets = if (lastAdDate == today) (doc.getLong("dailyTicketsEarned") ?: 0).toInt() else 0
+                val currentTickets = (doc.getLong("tickets") ?: 0).toInt()
+                if (dailyTickets >= 8) throw IllegalStateException("Aaj ke 8 tickets ka cap complete ho chuka hai. Kal try karein!")
 
-            val lastAdDate = doc.getString("lastAdWatchDate") ?: ""
-            val dailyAds = if (lastAdDate == today) (doc.getLong("dailyAdsWatched") ?: 0).toInt() else 0
-            val dailyTickets = if (lastAdDate == today) (doc.getLong("dailyTicketsEarned") ?: 0).toInt() else 0
-            val currentTickets = (doc.getLong("tickets") ?: 0).toInt()
-
-            if (dailyTickets >= 8) {
-                return Result.failure(Exception("Aaj ke 8 tickets ka cap complete ho chuka hai. Kal try karein!"))
-            }
-
-            val newAdsWatched = dailyAds + 1
-            val earnedNewTicket = (newAdsWatched % 10 == 0)
-
-            val updates = hashMapOf<String, Any>(
-                "dailyAdsWatched" to newAdsWatched,
-                "lastAdWatchDate" to today
-            )
-            if (earnedNewTicket) {
-                updates["tickets"] = currentTickets + 1
-                updates["dailyTicketsEarned"] = dailyTickets + 1
-            }
-
-            usersCol.document(id).set(updates, SetOptions.merge()).await()
+                val newAdsWatched = dailyAds + 1
+                val earnedNewTicket = newAdsWatched % 10 == 0
+                val updates = hashMapOf<String, Any>(
+                    "dailyAdsWatched" to newAdsWatched,
+                    "lastAdWatchDate" to today
+                )
+                if (earnedNewTicket) {
+                    updates["tickets"] = currentTickets + 1
+                    updates["dailyTicketsEarned"] = dailyTickets + 1
+                }
+                transaction.set(userRef, updates, SetOptions.merge())
+                Pair(newAdsWatched, earnedNewTicket)
+            }.await()
+            val (newAdsWatched, earnedNewTicket) = outcome
             Log.d("UserRepository", "watchRewardedAdForTicket: adsWatched=$newAdsWatched, earnedNewTicket=$earnedNewTicket")
-            Result.success(Pair(newAdsWatched, earnedNewTicket))
+            Result.success(outcome)
         } catch (e: Exception) {
             Log.e("UserRepository", "watchRewardedAdForTicket error: ${e.message}", e)
             if (e.message?.contains("cap complete") == true) Result.failure(e)
@@ -290,33 +289,31 @@ class UserRepository {
     ): Result<Unit> {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
-            val doc = usersCol.document(id).get().await()
-            val currentCoins = doc.getLong("npCoins") ?: 0L
-            val username = doc.getString("username") ?: ""
-            val email = doc.getString("email") ?: (auth.currentUser?.email ?: "")
-
-            if (currentCoins < cost) {
-                return Result.failure(Exception("Aapke paas balance kam hai ($currentCoins/$cost NP-Coins)"))
-            }
-
-            usersCol.document(id).set(
-                mapOf("npCoins" to FieldValue.increment(-cost)),
-                SetOptions.merge()
-            ).await()
-
-            val redemptionDoc = hashMapOf<String, Any>(
-                "userId" to id,
-                "username" to username,
-                "email" to email,
-                "rewardId" to rewardId,
-                "rewardName" to rewardName,
-                "cost" to cost,
-                "primaryDetail" to primaryDetail,
-                "secondaryDetail" to (secondaryDetail ?: ""),
-                "status" to "PENDING",
-                "requestedAt" to Timestamp.now()
-            )
-            redemptionsCol.add(redemptionDoc).await()
+            val userRef = usersCol.document(id)
+            val redemptionRef = redemptionsCol.document()
+            // Deducting the balance and creating the claim must be one atomic operation.
+            // Otherwise a network failure between the two writes could take coins without a claim.
+            db.runTransaction { transaction ->
+                val doc = transaction.get(userRef)
+                val currentCoins = doc.getLong("npCoins") ?: 0L
+                if (currentCoins < cost) {
+                    throw IllegalStateException("Aapke paas balance kam hai ($currentCoins/$cost NP-Coins)")
+                }
+                val redemptionDoc = hashMapOf<String, Any>(
+                    "userId" to id,
+                    "username" to (doc.getString("username") ?: ""),
+                    "email" to (doc.getString("email") ?: (auth.currentUser?.email ?: "")),
+                    "rewardId" to rewardId,
+                    "rewardName" to rewardName,
+                    "cost" to cost,
+                    "primaryDetail" to primaryDetail,
+                    "secondaryDetail" to (secondaryDetail ?: ""),
+                    "status" to "PENDING",
+                    "requestedAt" to Timestamp.now()
+                )
+                transaction.update(userRef, "npCoins", currentCoins - cost)
+                transaction.set(redemptionRef, redemptionDoc)
+            }.await()
 
             Log.d("UserRepository", "Redemption successful: $rewardName cost=$cost")
             Result.success(Unit)
@@ -332,43 +329,30 @@ class UserRepository {
         return try {
             val id = uid() ?: return Result.failure(Exception("Login nahi hai"))
             val today = getTodayDate()
-            val doc = usersCol.document(id).get().await()
+            val userRef = usersCol.document(id)
+            val outcome = db.runTransaction { transaction ->
+                val doc = transaction.get(userRef)
+                val lastCheckIn = doc.getString("lastCheckInDate") ?: ""
+                val currentDay = (doc.getLong("checkInDay") ?: 0).toInt()
+                if (lastCheckIn == today) throw IllegalStateException("Aaj ka check-in ho gaya hai!")
 
-            val lastCheckIn = doc.getString("lastCheckInDate") ?: ""
-            val currentDay = (doc.getLong("checkInDay") ?: 0).toInt()
-
-            if (lastCheckIn == today) {
-                return Result.failure(Exception("Aaj ka check-in ho gaya hai!"))
-            }
-
-            val yesterday = getYesterdayDate()
-            val newDay = if (lastCheckIn == yesterday) {
-                if (currentDay >= 7) 1 else currentDay + 1
-            } else {
-                1
-            }
-
-            val rewardCoins = when (newDay) {
-                1 -> 5L
-                2 -> 10L
-                3 -> 15L
-                4 -> 20L
-                5 -> 25L
-                6 -> 30L
-                7 -> 50L
-                else -> 5L
-            }
-
-            usersCol.document(id).set(
-                mapOf(
+                val newDay = if (lastCheckIn == getYesterdayDate()) {
+                    if (currentDay >= 7) 1 else currentDay + 1
+                } else 1
+                val rewardCoins = when (newDay) {
+                    1 -> 5L; 2 -> 10L; 3 -> 15L; 4 -> 20L
+                    5 -> 25L; 6 -> 30L; 7 -> 50L; else -> 5L
+                }
+                transaction.set(userRef, mapOf(
                     "checkInDay" to newDay,
                     "lastCheckInDate" to today,
                     "npCoins" to FieldValue.increment(rewardCoins),
                     "todayCoinsEarned" to FieldValue.increment(rewardCoins),
                     "lastPlayDate" to today
-                ),
-                SetOptions.merge()
-            ).await()
+                ), SetOptions.merge())
+                Pair(newDay, rewardCoins)
+            }.await()
+            val (newDay, rewardCoins) = outcome
 
             Log.d("UserRepository", "dailyCheckIn: day=$newDay, reward=$rewardCoins")
             Result.success(Pair(newDay, newDay == 7))
