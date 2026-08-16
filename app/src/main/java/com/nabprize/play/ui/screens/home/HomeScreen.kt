@@ -92,7 +92,7 @@ fun HomeScreen(
     onDailyCheckinClick: () -> Unit = {}
 ) {
     val metrics = rememberResponsiveMetrics()
-    val nextThreshold = 1500L
+    val nextThreshold = 350L
     val achievementProgress = (npCoins.toFloat() / nextThreshold.toFloat()).coerceIn(0f, 1f)
 
     Column(
@@ -655,7 +655,7 @@ private fun ChallengeCard(canChallenge: Boolean, onClick: () -> Unit) {
 @Composable
 private fun RewardsCard(npCoins: Long, onClick: () -> Unit) {
     val rewardItems = listOf(
-        Triple(R.drawable.img_freefire, "13 FF Diamonds", 1500L),
+        Triple(R.drawable.img_freefire, "13 FF Diamonds", 350L),
         Triple(R.drawable.img_pubg_mobile, "PUBG UC", 3000L),
         Triple(R.drawable.img_freefire, "FF Diamonds", 3000L),
         Triple(R.drawable.img_earbuds, "Earbuds", 20000L)
